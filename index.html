@@ -366,6 +366,8 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
   <div class="sb-item" id="sb-alocar"><span class="ic">📍</span> Alocar Pneus <span class="sb-cnt" id="cnt-alocar">0</span></div>
   <div class="sb-sec">Cadastro</div>
   <div class="sb-item" id="sb-cadastro"><span class="ic">➕</span> Novo Pneu</div>
+  <div class="sb-item" id="sb-lote"><span class="ic">📥</span> Adicionar Pneus (lote)</div>
+  <div class="sb-item" id="sb-semfogo"><span class="ic">🏷️</span> Pneus Sem Fogo <span class="sb-cnt" id="cnt-semfogo">0</span></div>
   <div class="sb-item" id="sb-todos"><span class="ic">📋</span> Todos os Pneus <span class="sb-cnt" id="cnt-total">0</span></div>
   <div class="sb-sec">Relatórios</div>
   <div class="sb-item" id="sb-rel-mov"><span class="ic">📄</span> Movimentações</div>
@@ -417,6 +419,20 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn primary" style="flex:1;justify-content:center;background:var(--green);color:#fff" onclick="confirmarAlocar()">Confirmar montagem</button>
       <button class="btn" onclick="fecharAlocar()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="km-modal" id="fogo-modal">
+  <div class="km-box">
+    <h3>🏷️ Atribuir número de fogo</h3>
+    <div class="hint" id="fogo-info" style="margin-bottom:12px"></div>
+    <div class="fg2"><label>Número de fogo real</label>
+      <input id="fogo-input" placeholder="ex: 1731" style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-size:14px;font-family:monospace">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn primary" style="flex:1;justify-content:center;background:var(--green);color:#fff" onclick="confirmarAtribuirFogo()">Confirmar</button>
+      <button class="btn" onclick="fecharAtribuirFogo()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -640,6 +656,14 @@ function stxt(mm){return mm>6?'Bom':(mm>=3?'Atenção':'Crítico');}
 function sbadge(mm){const c=sst(mm)==='sg'?'green':(sst(mm)==='sy'?'yellow':'red');return`<span class="badge ${c}">${mm}mm · ${stxt(mm)}</span>`;}
 function cpk(p){return p.kmVida>0?(p.valorU||0)/p.kmVida:0;}
 function getPneu(f){return P.find(x=>x.fogo===f);}
+
+function isSemFogo(p){ return !!(p && p.fogo && p.fogo.startsWith('PROV-')); }
+
+function proximoFogoProvisorio(){
+  const usados = P.filter(p=>isSemFogo(p)).map(p=>parseInt(p.fogo.replace('PROV-',''),10)).filter(n=>!isNaN(n));
+  const proximo = (usados.length?Math.max(...usados):0)+1;
+  return 'PROV-'+String(proximo).padStart(4,'0');
+}
 // KM cavalo → carreta parceira herda o hodômetro do cavalo
 function getHodoCarreta(carreta){
   const par=Object.entries(CFG.pairs).find(([c,t])=>t===carreta);
@@ -688,6 +712,7 @@ function renderSidebar(){
   document.getElementById('cnt-frota').textContent=PARES_DEFAULT.length;
   document.getElementById('cnt-estoque').textContent=almx+ref;
   const acEl=document.getElementById('cnt-alocar'); if(acEl) acEl.textContent=almx;
+  const sfEl=document.getElementById('cnt-semfogo'); if(sfEl){ const nsf=P.filter(isSemFogo).length; sfEl.textContent=nsf; sfEl.className='sb-cnt'+(nsf>0?' yellow':''); }
   const ac=document.getElementById('cnt-alertas');
   ac.textContent=crit;
   ac.className='sb-cnt'+(crit>0?' red':crit>0?' yellow':'');
@@ -709,6 +734,8 @@ function renderMain(){
     else if(VIEW==='km-lote') renderKmLote(mc);
     else if(VIEW==='alocar') renderAlocar(mc);
     else if(VIEW==='cadastro') renderCadastro(mc);
+    else if(VIEW==='add-lote') renderAddLote(mc);
+    else if(VIEW==='sem-fogo') renderSemFogo(mc);
     else if(VIEW==='edit') renderCadastro(mc,VP.fogo);
     else if(VIEW==='backup') renderBackup(mc);
     else if(VIEW.startsWith('rel-')) renderRel(mc,VIEW.replace('rel-',''));
@@ -1539,6 +1566,207 @@ function importEngates(){
 // ============================
 //  CADASTRO
 // ============================
+// ============================
+//  ADICIONAR PNEUS EM LOTE
+// ============================
+let LOTE_PREVIEW = [];
+let LOTE_DESTINO = 'almox';
+
+function parseLotePneus_(txt){
+  const linhas = (txt||'').split('\n').map(l=>l.trim()).filter(Boolean);
+  const validos = [], invalidos = [];
+  let provisoriosGerados = 0;
+  const usadosAntes = P.filter(p=>isSemFogo(p)).map(p=>parseInt(p.fogo.replace('PROV-',''),10)).filter(n=>!isNaN(n));
+  let proxProv = (usadosAntes.length?Math.max(...usadosAntes):0)+1;
+  linhas.forEach((linha, idx) => {
+    // aceita vírgula ou tab como separador
+    const partes = linha.split(/[,\t]/).map(p=>p.trim());
+    if(partes.length < 6){ invalidos.push({linha: idx+1, texto: linha, motivo: 'Faltam campos (precisa de 6: Fogo, Fabricante, Modelo, DOT, Sulco, Valor — Fogo pode ficar vazio)'}); return; }
+    let [fogo, fabricante, modelo, dot, sulcoStr, valorStr] = partes;
+    if(!fogo){
+      // fogo em branco = pneu novo sem numeração ainda → código provisório
+      fogo = 'PROV-'+String(proxProv).padStart(4,'0');
+      proxProv++; provisoriosGerados++;
+    } else {
+      if(getPneu(fogo)){ invalidos.push({linha: idx+1, texto: linha, motivo: 'Fogo '+fogo+' já existe no sistema'}); return; }
+      if(validos.find(v=>v.fogo===fogo)){ invalidos.push({linha: idx+1, texto: linha, motivo: 'Fogo '+fogo+' duplicado nesta mesma lista'}); return; }
+    }
+    const sulco = parseFloat(sulcoStr.replace(',','.')) || 0;
+    if(sulco<=0){ invalidos.push({linha: idx+1, texto: linha, motivo: 'Sulco inválido'}); return; }
+    if(sulco>30){ invalidos.push({linha: idx+1, texto: linha, motivo: 'Sulco '+sulco+'mm parece alto demais'}); return; }
+    const valor = parseFloat((valorStr||'0').replace(/[^\d,.-]/g,'').replace(',','.')) || 0;
+    validos.push({ fogo, fabricante: fabricante||'', modelo: modelo||'', dot: dot||'', sulcoMenor: sulco, valorU: valor, semFogo: fogo.startsWith('PROV-') });
+  });
+  return { validos, invalidos, provisoriosGerados };
+}
+
+function previewLote(){
+  const txt = document.getElementById('lote-paste').value;
+  const { validos, invalidos, provisoriosGerados } = parseLotePneus_(txt);
+  LOTE_PREVIEW = validos;
+  const box = document.getElementById('lote-preview-box');
+  let html = '';
+  if(validos.length){
+    html += `<div style="color:var(--green);font-weight:700;font-size:13px;margin-bottom:6px">✓ ${validos.length} pneu(s) prontos para importar${provisoriosGerados?` <span style="color:var(--accent)">(${provisoriosGerados} sem numeração — código provisório)</span>`:''}</div>`;
+    html += '<div style="max-height:180px;overflow-y:auto;font-family:monospace;font-size:11px;color:var(--txt2);line-height:1.6">';
+    html += validos.map(v=>`${v.semFogo?'<span style="color:var(--accent)">'+v.fogo+' ⚠️</span>':v.fogo} · ${v.fabricante} ${v.modelo} · DOT ${v.dot} · ${v.sulcoMenor}mm · ${fr(v.valorU)}`).join('<br>');
+    html += '</div>';
+  }
+  if(invalidos.length){
+    html += `<div style="color:var(--red);font-weight:700;font-size:13px;margin:10px 0 6px">⛔ ${invalidos.length} linha(s) com problema</div>`;
+    html += '<div style="max-height:140px;overflow-y:auto;font-size:11px;color:var(--red)">';
+    html += invalidos.map(v=>`Linha ${v.linha}: ${v.motivo} <span style="color:var(--txt3)">(${v.texto})</span>`).join('<br>');
+    html += '</div>';
+  }
+  if(!validos.length && !invalidos.length){
+    html = '<div style="color:var(--txt3);font-size:12px">Cole a lista acima e clique em Pré-visualizar</div>';
+  }
+  box.innerHTML = html;
+  document.getElementById('lote-import-btn').disabled = validos.length===0;
+}
+
+function setLoteDestino(v){ LOTE_DESTINO = v; }
+
+async function importarLote(){
+  if(!LOTE_PREVIEW.length){ toast('Nada para importar — pré-visualize primeiro', '#eab308'); return; }
+  const btn = document.getElementById('lote-import-btn');
+  btn.disabled = true; btn.textContent = 'Importando...';
+  const criados = [];
+  LOTE_PREVIEW.forEach(v=>{
+    const pneu = {
+      id: uid(), fogo: v.fogo, fabricante: v.fabricante, modelo: v.modelo, dot: v.dot,
+      vida: VIDAS[0], dimensao: '295/80R22,5', bandaRodagem: '',
+      sulcoMenor: v.sulcoMenor, sulcos: [v.sulcoMenor,v.sulcoMenor,v.sulcoMenor,v.sulcoMenor],
+      kmVida: 0, kmTotal: 0, kmInst: 0, valorU: v.valorU, valorTotal: v.valorU,
+      almoxarifado: 'PNEUS', status: LOTE_DESTINO, cavalo: null, carreta: null, posicao: null,
+      fornecedor: '', numDoc: '', dataEmissao: td(), dataCadastro: td()
+    };
+    P.push(pneu);
+    addM(pneu.fogo, 'Cadastro (lote)', '', '', '', pneu.sulcoMenor, 0);
+    criados.push(pneu);
+  });
+  toast(`✓ ${criados.length} pneu(s) cadastrados em ${LOTE_DESTINO==='almox'?'Almoxarifado':LOTE_DESTINO==='reforma'?'Reforma':'Sucata'}`, '#22c55e');
+  document.getElementById('lote-paste').value = '';
+  LOTE_PREVIEW = [];
+  nav('todos');
+  // sincroniza cada um com o backend (em paralelo)
+  await Promise.all(criados.map(p=>syncPneu(p)));
+}
+
+// ============================
+//  PNEUS SEM FOGO (numeração pendente)
+// ============================
+let FOGO_ALVO = null;
+
+function renderSemFogo(mc){
+  const lista = P.filter(isSemFogo).sort((a,b)=>a.fogo.localeCompare(b.fogo));
+  mc.innerHTML = `
+  <div class="vb">
+    <div class="vh">
+      <div><div class="vt">🏷️ Pneus Sem Fogo (${lista.length})</div>
+      <div class="vs">Pneus novos cadastrados antes de receber o número de fogo definitivo. Assim que a etiqueta chegar, atribua o número real aqui.</div></div>
+    </div>
+    ${lista.length ? `
+    <div style="overflow-x:auto;border:1px solid var(--bd);border-radius:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <thead><tr style="background:var(--bg2);text-align:left">
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2)">Código Provisório</th>
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2)">Fabricante</th>
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2)">Modelo</th>
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2)">DOT</th>
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2)">Status</th>
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2)"></th>
+        </tr></thead>
+        <tbody>
+        ${lista.map(p=>`<tr style="border-top:1px solid var(--bd)">
+          <td style="padding:9px 14px;font-family:monospace;font-weight:700;color:var(--accent)">${p.fogo}</td>
+          <td style="padding:9px 14px">${p.fabricante||'—'}</td>
+          <td style="padding:9px 14px">${p.modelo||'—'}</td>
+          <td style="padding:9px 14px;color:var(--txt3)">${p.dot||'—'}</td>
+          <td style="padding:9px 14px">${({'veiculo':'Em Veículo','almox':'Almoxarifado','reforma':'Reforma','sucata':'Sucata'})[p.status]||p.status}</td>
+          <td style="padding:9px 14px;text-align:right">
+            <button class="btn" onclick="abrirAtribuirFogo('${p.fogo}')" style="background:var(--green);color:#fff;font-weight:600;padding:6px 14px;font-size:12px">🏷️ Atribuir Fogo</button>
+          </td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : `<div style="padding:40px;text-align:center;color:var(--txt3)">Nenhum pneu aguardando numeração 🎉</div>`}
+  </div>`;
+}
+
+function abrirAtribuirFogo(provFogo){
+  const p = getPneu(provFogo); if(!p) return;
+  FOGO_ALVO = provFogo;
+  document.getElementById('fogo-info').textContent = p.fabricante+' '+p.modelo+' · DOT '+(p.dot||'—')+' · atualmente '+provFogo;
+  document.getElementById('fogo-input').value = '';
+  document.getElementById('fogo-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('fogo-input').focus(), 50);
+}
+function fecharAtribuirFogo(){ document.getElementById('fogo-modal').classList.remove('open'); FOGO_ALVO=null; }
+
+async function confirmarAtribuirFogo(){
+  if(!FOGO_ALVO) return;
+  const provAlvo = FOGO_ALVO; // captura antes de fechar o modal (que zera FOGO_ALVO)
+  const novoFogo = (document.getElementById('fogo-input').value||'').trim();
+  if(!novoFogo){ toast('Digite o número de fogo', '#eab308'); return; }
+  if(getPneu(novoFogo)){ toast('⛔ Fogo '+novoFogo+' já existe no sistema', '#ef4444'); return; }
+
+  const antigo = getPneu(provAlvo); if(!antigo) return;
+  const novo = Object.assign({}, antigo, { fogo: novoFogo, id: novoFogo });
+
+  P = P.filter(p=>p.fogo!==provAlvo);
+  P.push(novo);
+  addM(novoFogo, 'Atribuição de fogo (era '+provAlvo+')', novo.cavalo, novo.carreta, novo.posicao, novo.sulcoMenor, novo.kmVida);
+
+  fecharAtribuirFogo();
+  toast('✓ '+provAlvo+' agora é o fogo '+novoFogo, '#22c55e');
+  nav('sem-fogo');
+
+  // no backend: cria a linha nova e apaga a provisória
+  await syncPneu(novo);
+  await syncDeletePneu(provAlvo);
+}
+
+function renderAddLote(mc){
+  mc.innerHTML = `
+  <div class="vb">
+    <div class="vh">
+      <div><div class="vt">📥 Adicionar Pneus (em lote)</div>
+      <div class="vs">Cole a lista de pneus novos e importe todos de uma vez.</div></div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+      <span style="font-size:13px;color:var(--txt2);font-weight:600">Destino dos pneus:</span>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--txt2);cursor:pointer">
+        <input type="radio" name="lote-destino" value="almox" checked onchange="setLoteDestino(this.value)"> 📦 Almoxarifado
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--txt2);cursor:pointer">
+        <input type="radio" name="lote-destino" value="reforma" onchange="setLoteDestino(this.value)"> 🔧 Reforma
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--txt2);cursor:pointer">
+        <input type="radio" name="lote-destino" value="sucata" onchange="setLoteDestino(this.value)"> 🗑️ Sucata
+      </label>
+    </div>
+
+    <div style="font-size:12px;color:var(--txt3);margin-bottom:8px;line-height:1.5">
+      Uma linha por pneu, separado por vírgula: <code style="background:var(--bg2);padding:1px 5px;border-radius:4px">Fogo, Fabricante, Modelo, DOT, Sulco, Valor</code><br>
+      Ex: <code style="background:var(--bg2);padding:1px 5px;border-radius:4px">9001, GOODYEAR, KMAX S, 4523, 17.05, 2207.80</code><br>
+      <span style="color:var(--accent)">💡 Pneu novo sem numeração ainda? Deixe o Fogo vazio</span> — ex: <code style="background:var(--bg2);padding:1px 5px;border-radius:4px">, GOODYEAR, KMAX S, 4523, 17.05, 2207.80</code> — o sistema gera um código provisório (PROV-0001) até você cadastrar o fogo real depois.
+    </div>
+    <textarea id="lote-paste" placeholder="9001, GOODYEAR, KMAX S, 4523, 17.05, 2207.80&#10;, PIRELLI, FR01, 2224, 16.00, 2107.80  (sem fogo = pneu novo)&#10;..." rows="8"
+      style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-family:monospace;font-size:13px;resize:vertical"></textarea>
+
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn" onclick="previewLote()" style="background:var(--blue);color:#fff;font-weight:600;padding:9px 16px">👁️ Pré-visualizar</button>
+      <button class="btn" id="lote-import-btn" onclick="importarLote()" disabled style="background:var(--green);color:#fff;font-weight:700;padding:9px 16px;opacity:.5">✓ Importar Tudo</button>
+    </div>
+
+    <div id="lote-preview-box" style="margin-top:14px;padding:12px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;min-height:40px">
+      <div style="color:var(--txt3);font-size:12px">Cole a lista acima e clique em Pré-visualizar</div>
+    </div>
+  </div>`;
+}
+
 function renderCadastro(mc,fogoEdit=null){
   const pe=fogoEdit?getPneu(fogoEdit):null;
   const v=f=>pe?pe[f]||'':'';
@@ -1548,7 +1776,7 @@ function renderCadastro(mc,fogoEdit=null){
   <div class="vb"><form onsubmit="submitCad(event,'${fogoEdit||''}')">
   <div class="card"><div class="ch"><h2>📋 Identificação</h2></div><div class="cb">
   <div class="form-g">
-    <div class="fg2"><label>Nº de Fogo *</label><input name="fogo" required value="${v('fogo')}" placeholder="ex: 1731" ${pe?'readonly':''}></div>
+    <div class="fg2"><label>Nº de Fogo</label><input name="fogo" value="${v('fogo')}" placeholder="deixe em branco se for pneu novo sem numeração" ${pe?'readonly':''}><div class="hint" style="font-size:11px;color:var(--txt3);margin-top:3px">Em branco = pneu novo aguardando numeração (gera código provisório)</div></div>
     <div class="fg2"><label>DOT</label><input name="dot" value="${v('dot')}" placeholder="ex: 2223"></div>
     <div class="fg2"><label>Fabricante *</label>
       <select name="fabricante" required onchange="updModelos(this.value)">
@@ -1636,10 +1864,10 @@ function submitCad(e,fogoEdit){
   const fd=new FormData(e.target); const d=Object.fromEntries(fd);
   // ─── VALIDAÇÕES ───
   const erros=[];
-  if(!d.fogo||!d.fogo.trim()) erros.push('Número de fogo é obrigatório');
   if(!d.fabricante) erros.push('Fabricante é obrigatório');
   if(!d.modelo) erros.push('Modelo é obrigatório');
-  const fogo=(d.fogo||'').trim();
+  // Sem fogo informado = pneu novo aguardando numeração → gera código provisório
+  const fogo=(d.fogo||'').trim() || proximoFogoProvisorio();
   // Fogo duplicado
   if(!fogoEdit&&getPneu(fogo)){
     const ex=getPneu(fogo);
@@ -1963,7 +2191,7 @@ function toast(msg,color='#f97316'){
 // ============================
 const SB_MAP={
   'sb-home':'home','sb-frota':'frota','sb-almox':'almox','sb-reforma':'reforma',
-  'sb-sucata':'sucata','sb-estoque':'estoque','sb-engate':'engate','sb-km':'km-lote','sb-alocar':'alocar','sb-cadastro':'cadastro',
+  'sb-sucata':'sucata','sb-estoque':'estoque','sb-engate':'engate','sb-km':'km-lote','sb-alocar':'alocar','sb-cadastro':'cadastro','sb-lote':'add-lote','sb-semfogo':'sem-fogo',
   'sb-todos':'todos','sb-rel-mov':'rel-mov','sb-rel-vida':'rel-vida','sb-rel-fab':'rel-fab',
   'sb-rel-cpk':'rel-cpk','sb-rel-almox-rep':'rel-almox-rep','sb-rel-veh':'rel-veh',
   'sb-rel-suc':'rel-suc','sb-bi-suc':'bi-suc','sb-bi-pneu':'bi-pneu',
