@@ -382,6 +382,7 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
   <div class="sb-item" id="sb-bi-suc"><span class="ic">📉</span> B.I. Sucateamento</div>
   <div class="sb-item" id="sb-bi-pneu"><span class="ic">🔵</span> B.I. Pneus</div>
   <div class="sb-item" id="sb-bi-alertas"><span class="ic">⚠️</span> Alertas <span class="sb-cnt red" id="cnt-alertas">0</span></div>
+  <div class="sb-item" id="sb-trocas"><span class="ic">📅</span> Trocas por Período</div>
   <div class="sb-sec">Dados</div>
   <div class="sb-item" id="sb-backup"><span class="ic">💾</span> Backup/Restaurar</div>
   <div class="sb-user" id="sb-user-box">
@@ -737,6 +738,7 @@ function renderMain(){
     else if(VIEW==='cadastro') renderCadastro(mc);
     else if(VIEW==='add-lote') renderAddLote(mc);
     else if(VIEW==='sem-fogo') renderSemFogo(mc);
+    else if(VIEW==='trocas-periodo') renderTrocasPeriodo(mc);
     else if(VIEW==='edit') renderCadastro(mc,VP.fogo);
     else if(VIEW==='backup') renderBackup(mc);
     else if(VIEW.startsWith('rel-')) renderRel(mc,VIEW.replace('rel-',''));
@@ -2115,6 +2117,102 @@ let biCharts=[];
 function destroyBI(){biCharts.forEach(c=>{try{c.destroy()}catch(e){}});biCharts=[];}
 const COLS=['#f97316','#38bdf8','#22c55e','#eab308','#a78bfa','#f43f5e','#06b6d4','#84cc16','#f43f5e','#0ea5e9'];
 
+// ============================
+//  TROCAS POR PERÍODO
+// ============================
+let TROCAS_MODO = 'dia'; // 'dia' | 'semana' | 'mes'
+
+function setTrocasModo(m){ TROCAS_MODO = m; renderMain(); }
+
+function isoSemana_(d){
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(dt.getUTCFullYear(),0,1));
+  const semana = Math.ceil((((dt-yearStart)/86400000)+1)/7);
+  return dt.getUTCFullYear()+'-S'+String(semana).padStart(2,'0');
+}
+
+function chaveTroca_(dataStr, modo){
+  const d = new Date(dataStr);
+  if(isNaN(d)) return null;
+  if(modo==='dia') return d.toISOString().slice(0,10); // YYYY-MM-DD
+  if(modo==='semana') return isoSemana_(d);
+  return d.toISOString().slice(0,7); // YYYY-MM
+}
+
+function labelTroca_(chave, modo){
+  if(modo==='dia'){ const [y,m,dd]=chave.split('-'); return dd+'/'+m; }
+  if(modo==='semana'){ const [y,s]=chave.split('-S'); return 'Sem '+s+'/'+y.slice(2); }
+  const [y,m]=chave.split('-'); const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return meses[parseInt(m,10)-1]+'/'+y.slice(2);
+}
+
+function renderTrocasPeriodo(mc){
+  destroyBI();
+  const modo = TROCAS_MODO;
+  const grupos = {};
+  const porTipo = {};
+  MV.forEach(m=>{
+    const chave = chaveTroca_(m.data, modo);
+    if(!chave) return;
+    grupos[chave] = (grupos[chave]||0)+1;
+    const tipoBase = (m.tipo||'Outro').replace(/\s*\(.*?\)/,''); // remove "(era X)" etc
+    porTipo[tipoBase] = (porTipo[tipoBase]||0)+1;
+  });
+
+  const chaves = Object.keys(grupos).sort();
+  const limite = modo==='dia'?30:(modo==='semana'?16:12);
+  const chavesRecentes = chaves.slice(-limite);
+  const labels = chavesRecentes.map(c=>labelTroca_(c, modo));
+  const valores = chavesRecentes.map(c=>grupos[c]);
+
+  const hoje = new Date();
+  const chaveHoje = chaveTroca_(hoje.toISOString(), modo);
+  const trocasHoje = grupos[chaveHoje] || 0;
+  const total = MV.length;
+  const media = chaves.length ? (total/chaves.length).toFixed(1) : 0;
+
+  const sortTipo = Object.entries(porTipo).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  mc.innerHTML = `
+  <div class="vh"><h1>📅 Trocas por Período</h1><div class="sub">Movimentações de pneus ao longo do tempo</div></div>
+  <div class="vb">
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn ${modo==='dia'?'primary':''}" onclick="setTrocasModo('dia')" style="${modo==='dia'?'background:var(--blue);color:#fff':'background:var(--bg2);border:1px solid var(--bd);color:var(--txt2)'};font-weight:600;padding:8px 18px">Dia</button>
+      <button class="btn ${modo==='semana'?'primary':''}" onclick="setTrocasModo('semana')" style="${modo==='semana'?'background:var(--blue);color:#fff':'background:var(--bg2);border:1px solid var(--bd);color:var(--txt2)'};font-weight:600;padding:8px 18px">Semana</button>
+      <button class="btn ${modo==='mes'?'primary':''}" onclick="setTrocasModo('mes')" style="${modo==='mes'?'background:var(--blue);color:#fff':'background:var(--bg2);border:1px solid var(--bd);color:var(--txt2)'};font-weight:600;padding:8px 18px">Mês</button>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi o"><div class="lbl">Total de Movimentações</div><div class="val">${total.toLocaleString('pt-BR')}</div></div>
+      <div class="kpi g"><div class="lbl">Hoje</div><div class="val">${trocasHoje}</div></div>
+      <div class="kpi b"><div class="lbl">Média por ${modo==='dia'?'dia':modo==='semana'?'semana':'mês'}</div><div class="val">${media}</div></div>
+      <div class="kpi y"><div class="lbl">${modo==='dia'?'Últimos 30 dias':modo==='semana'?'Últimas 16 semanas':'Últimos 12 meses'}</div><div class="val">${valores.reduce((a,b)=>a+b,0)}</div></div>
+    </div>
+
+    <div class="card"><div class="ch"><h2>Movimentações por ${modo==='dia'?'Dia':modo==='semana'?'Semana':'Mês'}</h2></div>
+      <div class="cb"><div class="chart-wrap tall"><canvas id="ch-trocas"></canvas></div></div>
+    </div>
+
+    <div class="card" style="margin-top:16px"><div class="ch"><h2>Por Tipo de Movimentação</h2></div>
+      <div class="cb"><div class="chart-wrap"><canvas id="ch-trocas-tipo"></canvas></div></div>
+    </div>
+  </div>`;
+
+  const opt={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#a3adbf',font:{size:11}}}},scales:{x:{ticks:{color:'#6c7689'}},y:{ticks:{color:'#6c7689'},grid:{color:'#2a3140'}}}};
+  setTimeout(()=>{
+    if(!labels.length){
+      document.getElementById('ch-trocas').parentElement.innerHTML = '<div style="padding:40px;text-align:center;color:var(--txt3)">Nenhuma movimentação registrada ainda</div>';
+    } else {
+      biCharts.push(new Chart('ch-trocas',{type:'bar',data:{labels,datasets:[{label:'Trocas',data:valores,backgroundColor:'#f97316',borderRadius:5}]},options:opt}));
+    }
+    if(sortTipo.length){
+      biCharts.push(new Chart('ch-trocas-tipo',{type:'doughnut',data:{labels:sortTipo.map(([k])=>k),datasets:[{data:sortTipo.map(([,v])=>v),backgroundColor:COLS,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{labels:{color:'#a3adbf',font:{size:11}}}}}}));
+    }
+  },50);
+}
+
 function renderBI(mc,tipo){
   destroyBI();
   if(tipo==='pneu'){
@@ -2280,7 +2378,7 @@ const SB_MAP={
   'sb-todos':'todos','sb-rel-mov':'rel-mov','sb-rel-vida':'rel-vida','sb-rel-fab':'rel-fab',
   'sb-rel-cpk':'rel-cpk','sb-rel-almox-rep':'rel-almox-rep','sb-rel-veh':'rel-veh',
   'sb-rel-suc':'rel-suc','sb-bi-suc':'bi-suc','sb-bi-pneu':'bi-pneu',
-  'sb-bi-alertas':'bi-alertas','sb-backup':'backup'
+  'sb-bi-alertas':'bi-alertas','sb-trocas':'trocas-periodo','sb-backup':'backup'
 };
 Object.entries(SB_MAP).forEach(([id,view])=>{
   const el=document.getElementById(id);
