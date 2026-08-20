@@ -4,6 +4,7 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Gestão de Pneus — Transccema</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#0f1216;--bg2:#141820;--panel:#191e28;--panel2:#1f2531;--panel3:#252c3a;--line:#2a3140;--line2:#394151;--txt:#eef1f6;--txt2:#a3adbf;--txt3:#6c7689;--accent:#f97316;--a2:#fb923c;--ad:rgba(249,115,22,.14);--green:#22c55e;--gbg:rgba(34,197,94,.13);--yellow:#eab308;--ybg:rgba(234,179,8,.14);--red:#ef4444;--rbg:rgba(239,68,68,.14);--blue:#38bdf8;--bbg:rgba(56,189,248,.13);--sw:230px}
 *{box-sizing:border-box;margin:0;padding:0}html,body{height:100%;overflow:hidden}
@@ -1572,38 +1573,92 @@ function importEngates(){
 let LOTE_PREVIEW = [];
 let LOTE_DESTINO = 'almox';
 
-function parseLotePneus_(txt){
-  const linhas = (txt||'').split('\n').map(l=>l.trim()).filter(Boolean);
+// Validação compartilhada — recebe array de linhas já quebradas em [fogo,fabricante,modelo,dot,sulcoStr,valorStr]
+function validarLinhasLote_(linhasPartes){
   const validos = [], invalidos = [];
   let provisoriosGerados = 0;
   const usadosAntes = P.filter(p=>isSemFogo(p)).map(p=>parseInt(p.fogo.replace('PROV-',''),10)).filter(n=>!isNaN(n));
   let proxProv = (usadosAntes.length?Math.max(...usadosAntes):0)+1;
-  linhas.forEach((linha, idx) => {
-    // aceita vírgula ou tab como separador
-    const partes = linha.split(/[,\t]/).map(p=>p.trim());
-    if(partes.length < 6){ invalidos.push({linha: idx+1, texto: linha, motivo: 'Faltam campos (precisa de 6: Fogo, Fabricante, Modelo, DOT, Sulco, Valor — Fogo pode ficar vazio)'}); return; }
-    let [fogo, fabricante, modelo, dot, sulcoStr, valorStr] = partes;
+  linhasPartes.forEach(({partes, linha, origem}) => {
+    if(partes.length < 6){ invalidos.push({linha, texto: origem, motivo: 'Faltam campos (precisa de 6: Fogo, Fabricante, Modelo, DOT, Sulco, Valor — Fogo pode ficar vazio)'}); return; }
+    let [fogo, fabricante, modelo, dot, sulcoStr, valorStr] = partes.map(p=>String(p==null?'':p).trim());
     if(!fogo){
-      // fogo em branco = pneu novo sem numeração ainda → código provisório
       fogo = 'PROV-'+String(proxProv).padStart(4,'0');
       proxProv++; provisoriosGerados++;
     } else {
-      if(getPneu(fogo)){ invalidos.push({linha: idx+1, texto: linha, motivo: 'Fogo '+fogo+' já existe no sistema'}); return; }
-      if(validos.find(v=>v.fogo===fogo)){ invalidos.push({linha: idx+1, texto: linha, motivo: 'Fogo '+fogo+' duplicado nesta mesma lista'}); return; }
+      if(getPneu(fogo)){ invalidos.push({linha, texto: origem, motivo: 'Fogo '+fogo+' já existe no sistema'}); return; }
+      if(validos.find(v=>v.fogo===fogo)){ invalidos.push({linha, texto: origem, motivo: 'Fogo '+fogo+' duplicado nesta mesma lista'}); return; }
     }
-    const sulco = parseFloat(sulcoStr.replace(',','.')) || 0;
-    if(sulco<=0){ invalidos.push({linha: idx+1, texto: linha, motivo: 'Sulco inválido'}); return; }
-    if(sulco>30){ invalidos.push({linha: idx+1, texto: linha, motivo: 'Sulco '+sulco+'mm parece alto demais'}); return; }
-    const valor = parseFloat((valorStr||'0').replace(/[^\d,.-]/g,'').replace(',','.')) || 0;
+    const sulco = parseFloat(String(sulcoStr).replace(',','.')) || 0;
+    if(sulco<=0){ invalidos.push({linha, texto: origem, motivo: 'Sulco inválido'}); return; }
+    if(sulco>30){ invalidos.push({linha, texto: origem, motivo: 'Sulco '+sulco+'mm parece alto demais'}); return; }
+    const valor = parseFloat(String(valorStr||'0').replace(/[^\d,.-]/g,'').replace(',','.')) || 0;
     validos.push({ fogo, fabricante: fabricante||'', modelo: modelo||'', dot: dot||'', sulcoMenor: sulco, valorU: valor, semFogo: fogo.startsWith('PROV-') });
   });
   return { validos, invalidos, provisoriosGerados };
 }
 
-function previewLote(){
-  const txt = document.getElementById('lote-paste').value;
-  const { validos, invalidos, provisoriosGerados } = parseLotePneus_(txt);
-  LOTE_PREVIEW = validos;
+function parseLotePneus_(txt){
+  const linhas = (txt||'').split('\n').map(l=>l.trim()).filter(Boolean);
+  const linhasPartes = linhas.map((linha, idx) => ({
+    partes: linha.split(/[,\t]/).map(p=>p.trim()),
+    linha: idx+1,
+    origem: linha
+  }));
+  return validarLinhasLote_(linhasPartes);
+}
+
+// Lê um arquivo .xlsx enviado pelo usuário e devolve as mesmas linhas-partes
+function lerExcelLote_(arrayBuffer){
+  const wb = XLSX.read(arrayBuffer, {type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:''});
+  if(!rows.length) return [];
+  // detecta se a 1ª linha é cabeçalho (contém "fogo" em alguma célula, case-insensitive)
+  const primeira = rows[0].map(c=>String(c).toLowerCase());
+  const temCabecalho = primeira.some(c=>c.includes('fogo')||c.includes('fabricante'));
+  const dataRows = temCabecalho ? rows.slice(1) : rows;
+  return dataRows
+    .filter(r=>r.some(c=>String(c).trim()!==''))
+    .map((r, idx) => ({
+      partes: [r[0], r[1], r[2], r[3], r[4], r[5]],
+      linha: idx+1+(temCabecalho?1:0),
+      origem: r.slice(0,6).join(' | ')
+    }));
+}
+
+function baixarModeloLote(){
+  const dados = [
+    ['Fogo','Fabricante','Modelo','DOT','Sulco','Valor'],
+    ['9001','GOODYEAR','KMAX S','4523',17.05,2207.80],
+    ['','PIRELLI','FR01','2224',16.00,2107.80],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(dados);
+  ws['!cols'] = [{wch:12},{wch:14},{wch:14},{wch:8},{wch:8},{wch:10}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pneus');
+  XLSX.writeFile(wb, 'modelo_adicionar_pneus.xlsx');
+}
+
+function handleExcelLote(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const linhasPartes = lerExcelLote_(new Uint8Array(e.target.result));
+      const resultado = validarLinhasLote_(linhasPartes);
+      LOTE_PREVIEW = resultado.validos;
+      renderPreviewLote_(resultado);
+      document.getElementById('lote-arquivo-nome').textContent = '📎 '+file.name+' ('+linhasPartes.length+' linha(s) lida(s))';
+    }catch(err){
+      toast('⛔ Erro ao ler o arquivo — confira se é um .xlsx válido', '#ef4444');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderPreviewLote_({validos, invalidos, provisoriosGerados}){
   const box = document.getElementById('lote-preview-box');
   let html = '';
   if(validos.length){
@@ -1619,10 +1674,17 @@ function previewLote(){
     html += '</div>';
   }
   if(!validos.length && !invalidos.length){
-    html = '<div style="color:var(--txt3);font-size:12px">Cole a lista acima e clique em Pré-visualizar</div>';
+    html = '<div style="color:var(--txt3);font-size:12px">Cole a lista ou envie um Excel, depois clique em Pré-visualizar</div>';
   }
   box.innerHTML = html;
   document.getElementById('lote-import-btn').disabled = validos.length===0;
+}
+
+function previewLote(){
+  const txt = document.getElementById('lote-paste').value;
+  const resultado = parseLotePneus_(txt);
+  LOTE_PREVIEW = resultado.validos;
+  renderPreviewLote_(resultado);
 }
 
 function setLoteDestino(v){ LOTE_DESTINO = v; }
@@ -1732,10 +1794,10 @@ function renderAddLote(mc){
   <div class="vb">
     <div class="vh">
       <div><div class="vt">📥 Adicionar Pneus (em lote)</div>
-      <div class="vs">Cole a lista de pneus novos e importe todos de uma vez.</div></div>
+      <div class="vs">Envie um Excel com os pneus novos, ou cole a lista manualmente.</div></div>
     </div>
 
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
       <span style="font-size:13px;color:var(--txt2);font-weight:600">Destino dos pneus:</span>
       <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--txt2);cursor:pointer">
         <input type="radio" name="lote-destino" value="almox" checked onchange="setLoteDestino(this.value)"> 📦 Almoxarifado
@@ -1748,22 +1810,45 @@ function renderAddLote(mc){
       </label>
     </div>
 
-    <div style="font-size:12px;color:var(--txt3);margin-bottom:8px;line-height:1.5">
-      Uma linha por pneu, separado por vírgula: <code style="background:var(--bg2);padding:1px 5px;border-radius:4px">Fogo, Fabricante, Modelo, DOT, Sulco, Valor</code><br>
-      Ex: <code style="background:var(--bg2);padding:1px 5px;border-radius:4px">9001, GOODYEAR, KMAX S, 4523, 17.05, 2207.80</code><br>
-      <span style="color:var(--accent)">💡 Pneu novo sem numeração ainda? Deixe o Fogo vazio</span> — ex: <code style="background:var(--bg2);padding:1px 5px;border-radius:4px">, GOODYEAR, KMAX S, 4523, 17.05, 2207.80</code> — o sistema gera um código provisório (PROV-0001) até você cadastrar o fogo real depois.
+    <div class="card" style="padding:18px;margin-bottom:16px;border:1.5px dashed var(--bd);border-radius:12px;background:var(--bg2)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--txt);margin-bottom:4px">📊 Enviar planilha Excel</div>
+          <div style="font-size:12px;color:var(--txt3);line-height:1.5">
+            Colunas na ordem: <b>Fogo, Fabricante, Modelo, DOT, Sulco, Valor</b> (pode ter cabeçalho ou não).<br>
+            Fogo vazio = pneu novo sem numeração (vira código provisório automaticamente).
+          </div>
+        </div>
+        <button class="btn" onclick="baixarModeloLote()" style="background:var(--bg);border:1px solid var(--bd);color:var(--txt2);padding:7px 12px;font-size:12px;white-space:nowrap">⬇️ Baixar modelo</button>
+      </div>
+      <div style="margin-top:12px">
+        <label for="lote-excel-input" style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:var(--blue);color:#fff;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer">
+          📁 Escolher arquivo .xlsx
+        </label>
+        <input type="file" id="lote-excel-input" accept=".xlsx,.xls" style="display:none" onchange="handleExcelLote(this)">
+        <span id="lote-arquivo-nome" style="margin-left:10px;font-size:12px;color:var(--txt3)"></span>
+      </div>
     </div>
-    <textarea id="lote-paste" placeholder="9001, GOODYEAR, KMAX S, 4523, 17.05, 2207.80&#10;, PIRELLI, FR01, 2224, 16.00, 2107.80  (sem fogo = pneu novo)&#10;..." rows="8"
-      style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-family:monospace;font-size:13px;resize:vertical"></textarea>
 
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="btn" onclick="previewLote()" style="background:var(--blue);color:#fff;font-weight:600;padding:9px 16px">👁️ Pré-visualizar</button>
-      <button class="btn" id="lote-import-btn" onclick="importarLote()" disabled style="background:var(--green);color:#fff;font-weight:700;padding:9px 16px;opacity:.5">✓ Importar Tudo</button>
+    <details style="margin-bottom:14px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:0 14px">
+      <summary style="cursor:pointer;padding:12px 0;font-weight:600;font-size:13px;color:var(--txt2)">✏️ Ou colar lista manualmente</summary>
+      <div style="padding:0 0 14px">
+        <div style="font-size:12px;color:var(--txt3);margin-bottom:8px;line-height:1.5">
+          Uma linha por pneu, separado por vírgula: <code style="background:var(--bg);padding:1px 5px;border-radius:4px">Fogo, Fabricante, Modelo, DOT, Sulco, Valor</code><br>
+          Ex: <code style="background:var(--bg);padding:1px 5px;border-radius:4px">9001, GOODYEAR, KMAX S, 4523, 17.05, 2207.80</code><br>
+          <span style="color:var(--accent)">💡 Fogo vazio = pneu novo sem numeração</span> (gera código provisório PROV-0001).
+        </div>
+        <textarea id="lote-paste" placeholder="9001, GOODYEAR, KMAX S, 4523, 17.05, 2207.80&#10;, PIRELLI, FR01, 2224, 16.00, 2107.80  (sem fogo = pneu novo)&#10;..." rows="6"
+          style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-family:monospace;font-size:13px;resize:vertical"></textarea>
+        <button class="btn" onclick="previewLote()" style="margin-top:8px;background:var(--blue);color:#fff;font-weight:600;padding:9px 16px">👁️ Pré-visualizar texto colado</button>
+      </div>
+    </details>
+
+    <div id="lote-preview-box" style="margin-top:6px;margin-bottom:12px;padding:12px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;min-height:40px">
+      <div style="color:var(--txt3);font-size:12px">Cole a lista ou envie um Excel, depois clique em Pré-visualizar</div>
     </div>
 
-    <div id="lote-preview-box" style="margin-top:14px;padding:12px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;min-height:40px">
-      <div style="color:var(--txt3);font-size:12px">Cole a lista acima e clique em Pré-visualizar</div>
-    </div>
+    <button class="btn" id="lote-import-btn" onclick="importarLote()" disabled style="background:var(--green);color:#fff;font-weight:700;padding:10px 20px;opacity:.5">✓ Importar Tudo</button>
   </div>`;
 }
 
