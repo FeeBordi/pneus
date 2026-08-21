@@ -1058,17 +1058,24 @@ function setupDZ(cav,carr){
 function clrOver(){document.querySelectorAll('.over').forEach(e=>e.classList.remove('over'));}
 function setSTab(t){sTab=t;nav('frota-map',{idx:MAP_IDX});}
 
-function dropPos(targetPos,targetPlaca,isCarr){
+async function dropPos(targetPos,targetPlaca,isCarr){
   if(!mDrag) return;
   const {fogo,from,pos:srcPos}=mDrag;
-  const pneu=getPneu(fogo); if(!pneu){mDrag=null;return;}
-  const cav=PARES_DEFAULT[MAP_IDX][0];
-  const carr=CFG.pairs[cav]||PARES_DEFAULT[MAP_IDX][1];
-  // find occupant at target
+  mDrag=null;
+  const idxAtual = MAP_IDX;
+
+  // Busca a planilha fresquinha ANTES de decidir — evita agir com base numa posição
+  // que já mudou de dono nos últimos segundos (a tela só atualiza sozinha a cada 20s)
+  toast('Conferindo posição...', '#38bdf8');
+  await load();
+
+  const pneu=getPneu(fogo); if(!pneu){ toast('Pneu não encontrado — tela atualizada', '#eab308'); renderSidebar(); nav('frota-map',{idx:idxAtual}); return; }
+  const cav=PARES_DEFAULT[idxAtual][0];
+  const carr=CFG.pairs[cav]||PARES_DEFAULT[idxAtual][1];
   const occ=P.find(p=>p.status==='veiculo'&&(isCarr?p.carreta===targetPlaca:p.cavalo===targetPlaca)&&p.posicao===targetPos);
   const toSync=[];
   if(from==='veiculo'){
-    if(srcPos===targetPos){mDrag=null;return;}
+    if(srcPos===targetPos){ renderSidebar(); nav('frota-map',{idx:idxAtual}); return; }
     if(occ&&occ.fogo!==fogo){occ.posicao=srcPos;addM(occ.fogo,'Rodízio',occ.cavalo,occ.carreta,srcPos,occ.sulcoMenor,0);toSync.push(occ);}
     pneu.posicao=targetPos;
     if(isCarr){pneu.carreta=targetPlaca;pneu.cavalo=null;}else{pneu.cavalo=targetPlaca;pneu.carreta=null;}
@@ -1085,8 +1092,8 @@ function dropPos(targetPos,targetPlaca,isCarr){
     toSync.push(pneu);
     toast(fogo+' montado em '+targetPos,'#22c55e');
   }
-  mDrag=null;nav('frota-map',{idx:MAP_IDX});
-  (async()=>{ for(const p of toSync){ await syncPneu(p); } })();
+  renderSidebar(); nav('frota-map',{idx:idxAtual});
+  for(const p of toSync){ await syncPneu(p); }
 }
 function dropZone(zone,cav,carr){
   if(!mDrag) return;
