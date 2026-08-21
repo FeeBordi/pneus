@@ -1068,7 +1068,7 @@ function dropPos(targetPos,targetPlaca,isCarr){
     toast(fogo+' montado em '+targetPos,'#22c55e');
   }
   mDrag=null;nav('frota-map',{idx:MAP_IDX});
-  toSync.forEach(p=>syncPneu(p));
+  (async()=>{ for(const p of toSync){ await syncPneu(p); } })();
 }
 function dropZone(zone,cav,carr){
   if(!mDrag) return;
@@ -1109,8 +1109,7 @@ function saveKm(){
     if(kmNovo>p.kmVida){ p.kmVida=kmNovo; afetados.push(p); }
   });
   closeKm();toast('Hodômetro atualizado: '+fkm(v),'#22c55e');nav('frota-map',{idx:MAP_IDX||0});
-  syncHodometro(KM_CAV, v);
-  afetados.forEach(p=>syncPneu(p));
+  (async()=>{ await syncHodometro(KM_CAV, v); for(const p of afetados){ await syncPneu(p); } })();
 }
 document.getElementById('km-modal').onclick=e=>{if(e.target===document.getElementById('km-modal'))closeKm();};
 
@@ -1506,8 +1505,10 @@ function salvarKmLote(){
   if(salvos>0){toast(`✓ ${salvos} hodômetros salvos`+(erros?` (${erros} ignorados: KM menor que atual)`:''),'#22c55e');}
   else toast('Nenhum KM válido para salvar','#eab308');
   renderMain();
-  hodosParaSync.forEach(([cav,v])=>syncHodometro(cav,v));
-  pneusParaSync.forEach(p=>syncPneu(p));
+  (async()=>{
+    for(const [cav,v] of hodosParaSync){ await syncHodometro(cav,v); }
+    for(const p of pneusParaSync){ await syncPneu(p); }
+  })();
 }
 
 function renderEngate(mc){
@@ -1714,7 +1715,7 @@ async function importarLote(){
   LOTE_PREVIEW = [];
   nav('todos');
   // sincroniza cada um com o backend (em paralelo)
-  await Promise.all(criados.map(p=>syncPneu(p)));
+  for(const p of criados){ await syncPneu(p); }
 }
 
 // ============================
