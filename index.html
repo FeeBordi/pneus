@@ -546,6 +546,7 @@ async function showApp(){
 // ============================
 const API_URL = 'https://script.google.com/macros/s/AKfycbyxNjCT1UmURFcqaEl29rpRBkmrEIdAqh_E5zs-VOYXcpKwAP0BUMspE-I4FkmPduM0/exec';
 let SYNCING = false;
+let PENDING_WRITES = 0; // conta gravações em andamento — o polling espera zerar antes de atualizar a tela
 
 async function apiGet(action){
   const r = await fetch(API_URL + '?action=' + encodeURIComponent(action));
@@ -572,32 +573,40 @@ function pneuParaSheet_(p){
 
 // Envia um pneu pro backend (cria ou atualiza pelo fogo) — chamar após QUALQUER mudança num pneu
 async function syncPneu(p, tipoLabel){
+  PENDING_WRITES++;
   try{
     const r = await apiPost('upsertPneu', { pneu: pneuParaSheet_(p), usuario: currentUserName() });
     if(!r.ok){ toast('⚠️ '+(r.erro||'Falha ao sincronizar'), '#ef4444'); await refreshFromServer(); }
     return r;
   }catch(e){ toast('⚠️ Sem conexão com o servidor — tente novamente', '#ef4444'); return {ok:false}; }
+  finally{ PENDING_WRITES--; }
 }
 
 async function syncHodometro(cavalo, km){
+  PENDING_WRITES++;
   try{
     const r = await apiPost('updateHodometro', { cavalo: cavalo, km: km, usuario: currentUserName() });
     if(!r.ok){ toast('⚠️ '+(r.erro||'Falha ao atualizar hodômetro'), '#ef4444'); await refreshFromServer(); }
     return r;
   }catch(e){ toast('⚠️ Sem conexão com o servidor', '#ef4444'); return {ok:false}; }
+  finally{ PENDING_WRITES--; }
 }
 
 async function syncDeletePneu(fogo){
+  PENDING_WRITES++;
   try{
     const r = await apiPost('deletarPneu', { fogo: fogo, usuario: currentUserName() });
     if(!r.ok){ toast('⚠️ '+(r.erro||'Falha ao excluir'), '#ef4444'); }
     return r;
   }catch(e){ toast('⚠️ Sem conexão com o servidor', '#ef4444'); return {ok:false}; }
+  finally{ PENDING_WRITES--; }
 }
 
 async function syncAddPar(cavalo, carreta){
+  PENDING_WRITES++;
   try{ return await apiPost('addPar', { cavalo: cavalo, carreta: carreta || '' }); }
   catch(e){ return {ok:false}; }
+  finally{ PENDING_WRITES--; }
 }
 
 // Carrega tudo da planilha e popula o estado local (P, CFG, MV)
@@ -644,6 +653,9 @@ function startPolling(){
   setInterval(function(){
     // não atualiza por baixo do usuário se ele estiver preenchendo um formulário
     if(VIEW==='cadastro') return;
+    // não atualiza enquanto alguma gravação ainda está em andamento (evita
+    // buscar a planilha antes da mudança do próprio usuário ter sido salva)
+    if(PENDING_WRITES>0) return;
     refreshFromServer();
   }, 20000);
 }
