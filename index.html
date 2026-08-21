@@ -549,12 +549,18 @@ let SYNCING = false;
 let PENDING_WRITES = 0; // conta gravações em andamento — o polling espera zerar antes de atualizar a tela
 
 async function apiGet(action){
-  const r = await fetch(API_URL + '?action=' + encodeURIComponent(action));
+  // cache:'no-store' + timestamp único na URL — sem isso, o navegador (ou o proxy da
+  // rede/tablet) pode devolver uma resposta antiga guardada em cache por alguns
+  // segundos, fazendo a tela "voltar" pro estado anterior mesmo com o servidor já
+  // tendo a informação certa.
+  const url = API_URL + '?action=' + encodeURIComponent(action) + '&_ts=' + Date.now();
+  const r = await fetch(url, { cache: 'no-store' });
   return await r.json();
 }
 async function apiPost(action, payload){
   const r = await fetch(API_URL, {
     method: 'POST',
+    cache: 'no-store',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS no Apps Script
     body: JSON.stringify(Object.assign({ action: action }, payload))
   });
