@@ -328,6 +328,19 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
 .sb-user .nm{flex:1;font-weight:700;color:var(--txt)}
 .sb-user .lo{cursor:pointer;color:var(--txt3);font-size:11px;text-decoration:underline;white-space:nowrap}
 .sb-user .lo:hover{color:var(--red)}
+@media print{
+  body{background:#fff!important}
+  .sidebar,#login-screen,.km-modal,.toast,.btn{display:none!important}
+  .main{margin:0!important;padding:0!important;background:#fff!important}
+  .vh,.vb{background:#fff!important;color:#000!important;box-shadow:none!important;border:none!important}
+  .vh h1,.vb,.vb *{color:#000!important}
+  table{width:100%;border-collapse:collapse}
+  th,td{border:1px solid #999!important;padding:6px 8px!important;color:#000!important;background:#fff!important}
+  thead tr{background:#eee!important}
+  .badge{border:1px solid #999!important;background:#fff!important;color:#000!important}
+  .kpi{border:1px solid #999!important;background:#fff!important}
+  .kpi .val,.kpi .lbl{color:#000!important}
+}
 </style>
 </head>
 <body>
@@ -374,6 +387,7 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
   <div class="sb-item" id="sb-rel-mov"><span class="ic">📄</span> Movimentações</div>
   <div class="sb-item" id="sb-rel-vida"><span class="ic">📈</span> Projeção de Vida</div>
   <div class="sb-item" id="sb-rel-fab"><span class="ic">🏭</span> Custo Fabricantes</div>
+  <div class="sb-item" id="sb-rel-modelo"><span class="ic">🔎</span> Por Fabricante/Modelo</div>
   <div class="sb-item" id="sb-rel-cpk"><span class="ic">💰</span> Custo por Pneu</div>
   <div class="sb-item" id="sb-rel-almox-rep"><span class="ic">🏪</span> Pneus Almoxarifado</div>
   <div class="sb-item" id="sb-rel-veh"><span class="ic">🚛</span> Pneus por Veículo</div>
@@ -445,7 +459,7 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
 // ============================
 //  REFERENCE DATA
 // ============================
-const PARES_DEFAULT=[['GEE 8D56','FJC 1A57'],['CGS 6D85','CFZ 1H67'],['EVU 2D08','ECF 3G87'],['UEW 4B68','UDR 9C51'],['TLB 0I39','QSW 7J44'],['UDR 1E96','UDE 3C87'],['GAT 9905','TLH 5J30'],['FFJ 9F47','TLX 7F19'],['UGC 4G49','QSP 6E35'],['FEW 4A95','EJW 2G93'],['TJG 0B59','TJE 2A38'],['UFR 0B04','GFC 2A99'],['FRF 8G36','SSU 8G76'],['UFP 0J09','BYI 6657'],['FJD 8J11','GII 3F62'],['SVU 5F70','EOB 4C76'],['UFY 3I79','UDP 2G44'],['GKB 8J64','FXX 8B76'],['TKL 9J38','TLR 7A16'],['DRF 4J21','SWF 1E23'],['SUD 5B68','UDL 9A95'],['FWK 6C77','FUO 9C87'],['GJV 3D75','GDQ 0E95'],['UER 5G16','UDV 3A76'],['STY 5I48','DSM 9411'],['GDL 1255','GBD 0H85'],['GAQ 1H66','GGS 8H68'],['SWN 8E99','BYZ 5854'],['UED 7B91','FVH 5E66'],['GBQ 7715','CCU 7699'],['GEZ 7G76','FWO 2F33'],['DMC 2D69','GJC 9544'],['UDR 9J75','UDC 7C03'],['FPU 0F53','GCI 4H77'],['FXZ 9B23','ESY 2G37'],['TLW 6I26','UGG 9J60'],['ELE 7344','FQM 3077'],['DWR 0028','GHC 3D23'],['STY 7I10','GGY 5H28'],['UDQ 2J70','SVV 1G66'],['GGB 1G45','BZB 5J87'],['SWA 3J10','TKZ 5H20'],['EZY 1F43','CDX 1441'],['GHB 6H86','FYF 6H14'],['GFL 9E16','FZT 0I56'],['SVA 8F50','SVA 2D56'],['SVO 7H59','GBB 0F93'],['BSY 2G54','DJC 2C61'],['GFF 5J27','EJW 6255'],['TLR 9A77','TLM 5J98'],['FXA 7G03','EJJ 2A85'],['GJV 9A63','FNH 2H06'],['TMA 1B99','FPZ 5C28'],['FZU 3J56','UFI 3B00'],['FPS 7B22','GFH 7G16'],['BSZ 1I51','TMC 9B38'],['DKU 1140','FQP 1C57'],['EQA 1699','GHV 1D97'],['GFF 1H76','GBI 7E16'],['FPT 9C43','ECG 9F68'],['GCD 2706','GFU 8E58'],['DNK 2424','FRZ 5E63'],['DZD 0E66','EXC 0D63'],['EWB 1177','CUE 6C65'],['GJK 8H96','FXH 5D97'],['SUJ 2J39','TLQ 6G49'],['UFB 9H24','TMD 2G28'],['BZR 3H35','GFI 6H04'],['GIT 8H34','QSQ 9C38'],['GDQ 7466','ENU 2B68'],['BZG 8698','BUP 5B75'],['FGW 3F54','UEZ 5B27'],['UEZ 2J67','EEY 2999'],['EWF 0H96','FJB 5F85'],['FYV 1A35','EZX 5G09'],['FQB 1H13','UDI 2E99'],['STM 0I18','GGL 3A81'],['FND 3H15','GFQ 0887'],['SWO 5C39','SWH 4C26'],['GBZ 5D64','EHH 3A65'],['SUY 4F19','UDR 6F07'],['DUF 2949','FMM 9C24'],['GHR 2I92','STQ 4G76'],['GEN 4005','GAJ 2866'],['QSS 6G84','UEO 5H49'],['GHM 9C67','GBA 4F15'],['FZP 9H85','TLI 5D30'],['GIG 8F54','ECF 4D38'],['GCG 4484','SVL 4H95'],['EFF 6H95','UFT 1F79'],['GDH 4B32','FTQ 2B67'],['GIB 2E77','EGT 2H59'],['GBU 7H25','FWQ 2E96'],['ECV 3I01','UGE 7J19'],['EOC 6D51','GEU 6D87'],['GJP 3H54','TKM 7J70'],['GGE 5I04','QSY 7I70'],['TJB 5B40','TLI 3G08'],['DYH 6I81','TJD 4B49'],['EQK 9E69','DIS 4I51'],['GFJ 8311','FZL 2B89'],['TMA 6F07','UEK 2F30'],['GDM 2224','GCB 3H88'],['UEQ 1A89','ELF 4H91'],['GJV 6737','CRW 0G53'],['EEE 9A47','FXR 5J65'],['FTX 5J42','CFZ 8F75'],['GES 6145','BSZ 9H04'],['GJQ 2G96','GHW 9J07'],['UDI 0J52','UGK 8B41'],['FCT 4554','GDW 6H82'],['FFI 3C42','GHS 7F93'],['DFW 8E42','UDG 1J95'],['SWG 7I69','BVT 5F72'],['ECU 4044','GCZ 1E28'],['UDG 7G93','SVB 1I36'],['EWV 9226','UDG 7H39'],['UFI 0A79','UDY 2G22'],['FOO 4B98','GJT 3I86'],['GFF 4088','FZA 0G07'],['EXN 4E86','BZR 9D26'],['TKX 1A49','TLA 8B39'],['BXZ 6A22','UEC 7A60'],['UER 7E56','UND 9G88'],['BUX 9882','GCN 9E97'],['SVT 5G88','GHZ 0C84'],['STR 8B50','GCU 0858'],['GBO 2D62','GFL 4474'],['UDA 1G71','UGR 8J32'],['GJY 6665','FWQ 8227'],['EXV 1613','UDY 8C80'],['EBL 2119','DTD 2754'],['TLV 2I87','EIK 6I99'],['FHH 5852','TKY 4A18'],['DCU 2088','UGR 8E43'],['DRU 1229','TLS 9C18'],['END 9449','UEB 2C29'],['EXD 0177','FJQ 9H26'],['EYU 4466','GAU 2144'],['FQH 3994','END 5466'],['FYJ 0766','ELX 2219'],['FZA 6744','BPO 8543'],['GCV 3H67','']];
+let PARES_DEFAULT=[]; // populado de verdade pelo load() a partir da planilha (Frota) — nunca mais fixo no código
 
 const FABS=['GOODYEAR','BRIDGESTONE','MICHELIN','PIRELLI','DUNLOP','CONTINENTAL','FIRESTONE','WESTLAKE','HANKOOK','ADVANCE'];
 const MODS_FAB={'GOODYEAR':['KMAX D','KMAX S','KMAX RSA','G359'],'BRIDGESTONE':['R269','R249','M736','M745','M792','VT 120L'],'MICHELIN':['X MULTI D','X MULTI Z','KMAX S','KMAX D'],'PIRELLI':['FR01','FR88','H88'],'DUNLOP':['SP320','SP835'],'CONTINENTAL':['Conti EcoPlus HD3'],'WESTLAKE':['CR976A','AD528'],'FIRESTONE':['FS820']};
@@ -638,7 +652,7 @@ async function load(){
     return { data: m.data, fogo: m.fogo, tipo: m.tipo, cavalo: m.cavalo, carreta: m.carreta, posicao: m.posicao, sulco: m.sulco, km: m.km, usuario: m.usuario };
   });
 
-  window.PARES_DEFAULT = Object.keys(CFG.pairs).map(function(c){ return [c, CFG.pairs[c]]; });
+  PARES_DEFAULT = Object.keys(CFG.pairs).map(function(c){ return [c, CFG.pairs[c]]; });
 }
 
 // Re-sincroniza com o servidor sem perder a tela atual (usado no polling e após erros)
@@ -757,6 +771,7 @@ function renderMain(){
     else if(VIEW==='add-lote') renderAddLote(mc);
     else if(VIEW==='sem-fogo') renderSemFogo(mc);
     else if(VIEW==='trocas-periodo') renderTrocasPeriodo(mc);
+    else if(VIEW==='rel-modelo') renderRelModelo(mc);
     else if(VIEW==='edit') renderCadastro(mc,VP.fogo);
     else if(VIEW==='backup') renderBackup(mc);
     else if(VIEW.startsWith('rel-')) renderRel(mc,VIEW.replace('rel-',''));
@@ -2073,6 +2088,124 @@ document.getElementById('dbg').onclick=closeDet;
 // ============================
 //  RELATÓRIOS
 // ============================
+// ============================
+//  RELATÓRIO POR FABRICANTE/MODELO
+// ============================
+let RELMOD_FAB = 'DUNLOP';
+let RELMOD_MODELOS = new Set(['SP320','SP835']);
+
+function relModSetFab(v){ RELMOD_FAB = v.toUpperCase(); nav('rel-modelo'); }
+function relModToggleModelo(m){
+  if(RELMOD_MODELOS.has(m)) RELMOD_MODELOS.delete(m); else RELMOD_MODELOS.add(m);
+  nav('rel-modelo');
+}
+
+function exportarRelModeloExcel(){
+  const fabQ = RELMOD_FAB.trim().toUpperCase();
+  const todosDoFab = P.filter(p=>(p.fabricante||'').toUpperCase()===fabQ);
+  const filtrados = todosDoFab.filter(p=>RELMOD_MODELOS.size===0 || RELMOD_MODELOS.has(p.modelo));
+  if(!filtrados.length){ toast('Nada para exportar com esse filtro', '#eab308'); return; }
+
+  const stMap = {'veiculo':'Em Veículo','almox':'Almoxarifado','reforma':'Reforma','sucata':'Sucata'};
+  const linhas = filtrados.slice().sort((a,b)=>(b.kmVida||0)-(a.kmVida||0));
+
+  const dados = [
+    ['Fogo','Fabricante','Modelo','Status','Veículo','Posição','Sulco (mm)','KM Rodado']
+  ];
+  linhas.forEach(p=>{
+    dados.push([
+      p.fogo, p.fabricante||'', p.modelo||'', stMap[p.status]||p.status,
+      p.cavalo||p.carreta||'—', p.posicao||'—', p.sulcoMenor||0, p.kmVida||0
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(dados);
+  ws['!cols'] = [{wch:10},{wch:14},{wch:14},{wch:12},{wch:12},{wch:10},{wch:11},{wch:12}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Relatorio');
+  const nomeModelos = RELMOD_MODELOS.size ? [...RELMOD_MODELOS].join('-') : 'todos';
+  XLSX.writeFile(wb, `relatorio_${fabQ}_${nomeModelos}.xlsx`);
+}
+
+function renderRelModelo(mc){
+  const fabQ = RELMOD_FAB.trim().toUpperCase();
+  const todosDoFab = P.filter(p=>(p.fabricante||'').toUpperCase()===fabQ);
+  const modelosDisponiveis = [...new Set(todosDoFab.map(p=>p.modelo).filter(Boolean))].sort();
+
+  const filtrados = todosDoFab.filter(p=>RELMOD_MODELOS.size===0 || RELMOD_MODELOS.has(p.modelo));
+
+  const stMap = {'veiculo':'Em Veículo','almox':'Almoxarifado','reforma':'Reforma','sucata':'Sucata'};
+  const comKm = filtrados.map(p=>p.kmVida||0);
+  const totalKm = comKm.reduce((a,b)=>a+b,0);
+  const mediaKm = filtrados.length ? Math.round(totalKm/filtrados.length) : 0;
+  const emVeiculo = filtrados.filter(p=>p.status==='veiculo').length;
+
+  const porModelo = {};
+  filtrados.forEach(p=>{ porModelo[p.modelo] = (porModelo[p.modelo]||0)+1; });
+
+  const linhas = filtrados.slice().sort((a,b)=>(b.kmVida||0)-(a.kmVida||0));
+
+  mc.innerHTML = `
+  <div class="vh"><div><h1>🔎 Por Fabricante / Modelo</h1><div class="sub">Filtre por fabricante e modelo — KM rodado e posição de cada pneu</div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="exportarRelModeloExcel()" style="background:var(--green);color:#fff;font-weight:600;padding:8px 14px">📊 Baixar Excel</button>
+      <button class="btn" onclick="window.print()" style="background:var(--bg2);border:1px solid var(--bd);color:var(--txt2);padding:8px 14px">🖨️ Imprimir / PDF</button>
+    </div>
+  </div>
+  <div class="vb">
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;margin-bottom:5px">Fabricante</label>
+        <input id="relmod-fab" value="${RELMOD_FAB}" onkeydown="if(event.key==='Enter')relModSetFab(this.value)"
+          style="padding:9px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--txt);font-size:14px;width:200px">
+      </div>
+      <button class="btn" onclick="relModSetFab(document.getElementById('relmod-fab').value)" style="background:var(--blue);color:#fff;font-weight:600;padding:9px 16px">Buscar</button>
+    </div>
+
+    ${modelosDisponiveis.length ? `
+    <div style="margin-bottom:16px">
+      <label style="display:block;font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;margin-bottom:6px">Modelos de ${fabQ} (clique para marcar/desmarcar)</label>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        ${modelosDisponiveis.map(m=>`<span onclick="relModToggleModelo('${m}')" style="cursor:pointer;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid ${RELMOD_MODELOS.has(m)?'var(--blue)':'var(--bd)'};background:${RELMOD_MODELOS.has(m)?'rgba(56,189,248,.12)':'var(--bg2)'};color:${RELMOD_MODELOS.has(m)?'var(--blue)':'var(--txt2)'}">${m} <span style="opacity:.6">(${porModelo[m]||todosDoFab.filter(p=>p.modelo===m).length})</span></span>`).join('')}
+      </div>
+    </div>` : `<div style="padding:20px;color:var(--txt3);font-size:13px">Nenhum pneu encontrado do fabricante "${fabQ}"</div>`}
+
+    ${filtrados.length ? `
+    <div class="kpis" style="margin-bottom:16px">
+      <div class="kpi o"><div class="lbl">Pneus encontrados</div><div class="val">${filtrados.length}</div></div>
+      <div class="kpi g"><div class="lbl">Em veículo</div><div class="val">${emVeiculo}</div></div>
+      <div class="kpi b"><div class="lbl">KM médio</div><div class="val">${mediaKm.toLocaleString('pt-BR')}</div></div>
+      <div class="kpi y"><div class="lbl">KM total rodado</div><div class="val">${totalKm.toLocaleString('pt-BR')}</div></div>
+    </div>
+
+    <div style="overflow-x:auto;border:1px solid var(--bd);border-radius:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:var(--bg2);text-align:left">
+          <th style="padding:10px 14px">Fogo</th><th style="padding:10px 14px">Modelo</th>
+          <th style="padding:10px 14px">Status</th><th style="padding:10px 14px">Veículo</th>
+          <th style="padding:10px 14px">Posição</th><th style="padding:10px 14px" class="r">Sulco</th>
+          <th style="padding:10px 14px" class="r">KM Rodado</th>
+        </tr></thead>
+        <tbody>
+        ${linhas.map(p=>{
+          const veic = p.cavalo || p.carreta || '—';
+          const km = p.kmVida||0;
+          return `<tr style="border-top:1px solid var(--bd);cursor:pointer" onclick="openDet('${p.fogo}')">
+            <td style="padding:8px 14px;font-family:monospace;font-weight:700;color:var(--txt)">${p.fogo}</td>
+            <td style="padding:8px 14px">${p.modelo||'—'}</td>
+            <td style="padding:8px 14px"><span class="badge ${p.status==='veiculo'?'green':p.status==='sucata'?'red':p.status==='reforma'?'blue':'gray'}">${stMap[p.status]||p.status}</span></td>
+            <td style="padding:8px 14px;font-family:monospace">${veic}</td>
+            <td style="padding:8px 14px;font-family:monospace;font-size:11px">${p.posicao||'—'}</td>
+            <td style="padding:8px 14px" class="r">${p.sulcoMenor||0}mm</td>
+            <td style="padding:8px 14px" class="r">${km.toLocaleString('pt-BR')}</td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+    </div>` : ''}
+  </div>`;
+}
+
 function renderRel(mc,tipo){
   const titles={mov:'Movimentações',vida:'Projeção de Vida',fab:'Custo por Fabricantes',cpk:'Custo por Pneu (CPK)','almox-rep':'Pneus em Almoxarifado',veh:'Pneus por Veículo',suc:'Pneus Sucateados'};
   let content='';
@@ -2402,7 +2535,7 @@ const SB_MAP={
   'sb-home':'home','sb-frota':'frota','sb-almox':'almox','sb-reforma':'reforma',
   'sb-sucata':'sucata','sb-estoque':'estoque','sb-engate':'engate','sb-km':'km-lote','sb-alocar':'alocar','sb-cadastro':'cadastro','sb-lote':'add-lote','sb-semfogo':'sem-fogo',
   'sb-todos':'todos','sb-rel-mov':'rel-mov','sb-rel-vida':'rel-vida','sb-rel-fab':'rel-fab',
-  'sb-rel-cpk':'rel-cpk','sb-rel-almox-rep':'rel-almox-rep','sb-rel-veh':'rel-veh',
+  'sb-rel-cpk':'rel-cpk','sb-rel-almox-rep':'rel-almox-rep','sb-rel-veh':'rel-veh','sb-rel-modelo':'rel-modelo',
   'sb-rel-suc':'rel-suc','sb-bi-suc':'bi-suc','sb-bi-pneu':'bi-pneu',
   'sb-bi-alertas':'bi-alertas','sb-trocas':'trocas-periodo','sb-backup':'backup'
 };
