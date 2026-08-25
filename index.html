@@ -419,7 +419,7 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
       <div class="hint" id="km-hint"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px">
-      <button class="btn primary" style="flex:1;justify-content:center" onclick="saveKm()">Salvar</button>
+      <button class="btn primary" id="km-save-btn" style="flex:1;justify-content:center" onclick="saveKm()">Salvar</button>
       <button class="btn" onclick="closeKm()">Cancelar</button>
     </div>
   </div>
@@ -668,16 +668,15 @@ async function refreshFromServer(){
   } finally { SYNCING = false; }
 }
 
-// Atualização "quase tempo-real": repuxa a planilha a cada 20s
-function startPolling(){
-  setInterval(function(){
-    // não atualiza por baixo do usuário se ele estiver preenchendo um formulário
-    if(VIEW==='cadastro') return;
-    // não atualiza enquanto alguma gravação ainda está em andamento (evita
-    // buscar a planilha antes da mudança do próprio usuário ter sido salva)
-    if(PENDING_WRITES>0) return;
-    refreshFromServer();
-  }, 20000);
+// Sem atualização automática por tempo — ela causava a sensação de "piscar e voltar"
+// quando disparava no meio de uma ação. Agora a tela só busca dado fresco da planilha
+// no exato momento de uma ação (ver refreshAntesDeAgir), nunca sozinha em segundo plano.
+function startPolling(){ /* desativado de propósito — ver comentário acima */ }
+
+// Busca a planilha fresquinha e devolve o valor atual de um pneu/hodômetro específico,
+// SEM re-renderizar a tela. Chamado sempre logo antes de qualquer botão de salvar.
+async function refreshAntesDeAgir(){
+  await load();
 }
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
@@ -1126,30 +1125,51 @@ function dropZone(zone,cav,carr){
 // ============================
 //  KM MODAL
 // ============================
+let KM_HODO_ORIGINAL=0, KM_ABERTO_EM=0;
 function openKmModal(cav){
   KM_CAV=cav;
   const h=CFG.hodos[cav]||0;
+  KM_HODO_ORIGINAL=h; KM_ABERTO_EM=Date.now();
   document.getElementById('km-title').textContent='Hodômetro: '+cav;
   document.getElementById('km-input').value=h||'';
   document.getElementById('km-hint').textContent=h?'Atual: '+fkm(h):'Sem registro';
   document.getElementById('km-modal').classList.add('open');
 }
 function closeKm(){document.getElementById('km-modal').classList.remove('open');KM_CAV=null;}
-function saveKm(){
+async function saveKm(){
   if(!KM_CAV) return;
+  const cav=KM_CAV; // guarda antes de qualquer coisa poder zerar KM_CAV
   const v=parseInt(document.getElementById('km-input').value)||0;
-  const old=CFG.hodos[KM_CAV]||0;
-  if(v<old){toast('KM não pode ser menor que o atual!','#ef4444');return;}
-  CFG.hodos[KM_CAV]=v;
+  const btn=document.getElementById('km-save-btn');
+  if(btn){btn.disabled=true;btn.textContent='Conferindo...';}
+
+  // Confere hodômetro e movimentações mais recentes ANTES de gravar — se alguém
+  // mexeu nesse veículo desde que você abriu essa tela, avisa em vez de sobrescrever.
+  await refreshAntesDeAgir();
+  if(btn){btn.disabled=false;btn.textContent='Salvar';}
+
+  const atual=CFG.hodos[cav]||0;
+  if(atual!==KM_HODO_ORIGINAL){
+    const seguir=confirm('Atenção: o hodômetro deste veículo mudou desde que você abriu esta tela — está agora em '+fkm(atual)+' (era '+fkm(KM_HODO_ORIGINAL)+' quando você abriu).\n\nDeseja continuar mesmo assim e salvar '+fkm(v)+'?');
+    if(!seguir){ closeKm(); nav('frota-map',{idx:MAP_IDX||0}); return; }
+  }
+  const movRecente=MV.filter(m=>(m.cavalo===cav||m.carreta===CFG.pairs[cav])&&new Date(m.data).getTime()>KM_ABERTO_EM);
+  if(movRecente.length){
+    const seguir=confirm('Atenção: houve '+movRecente.length+' movimentação(ões) de pneu nesse veículo desde que você abriu esta tela.\n\nDeseja continuar mesmo assim?');
+    if(!seguir){ closeKm(); nav('frota-map',{idx:MAP_IDX||0}); return; }
+  }
+
+  if(v<atual){toast('KM não pode ser menor que o atual!','#ef4444');return;}
+  CFG.hodos[cav]=v;
   // Atualizar kmVida dos pneus do cavalo e carreta parceira
-  const carr=CFG.pairs[KM_CAV];
+  const carr=CFG.pairs[cav];
   const afetados=[];
-  P.filter(p=>p.status==='veiculo'&&(p.cavalo===KM_CAV||(carr&&p.carreta===carr))).forEach(p=>{
+  P.filter(p=>p.status==='veiculo'&&(p.cavalo===cav||(carr&&p.carreta===carr))).forEach(p=>{
     const kmNovo=Math.max(0,v-(p.kmInst||0));
     if(kmNovo>p.kmVida){ p.kmVida=kmNovo; afetados.push(p); }
   });
-  closeKm();toast('Hodômetro atualizado: '+fkm(v),'#22c55e');nav('frota-map',{idx:MAP_IDX||0});
-  (async()=>{ await syncHodometro(KM_CAV, v); for(const p of afetados){ await syncPneu(p); } })();
+  closeKm();toast('Hodômetro atualizado: '+fkm(v),'#22c55e');renderSidebar();nav('frota-map',{idx:MAP_IDX||0});
+  await syncHodometro(cav, v); for(const p of afetados){ await syncPneu(p); }
 }
 document.getElementById('km-modal').onclick=e=>{if(e.target===document.getElementById('km-modal'))closeKm();};
 
@@ -1523,18 +1543,25 @@ function aplicarKmColado(){
   msg.innerHTML=`<span style="color:var(--green)">✓ ${ok} preenchidos</span>`+(naoAchou.length?` <span style="color:var(--accent)">· ${naoAchou.length} não encontrados: ${naoAchou.slice(0,5).join(', ')}${naoAchou.length>5?'...':''}</span>`:'');
 }
 
-function salvarKmLote(){
+async function salvarKmLote(){
+  // Captura o que o usuário digitou ANTES de atualizar os dados (senão o refresh reconstrói a tela e perde os valores)
+  const digitados=[];
+  document.querySelectorAll('input[id^="km_"]').forEach(el=>{
+    const v=parseInt(el.value)||0;
+    if(v>0) digitados.push({cav:el.dataset.cav, v});
+  });
+  if(!digitados.length){ toast('Nenhum KM válido para salvar','#eab308'); return; }
+
+  toast('Conferindo hodômetros antes de salvar...', '#38bdf8');
+  await refreshAntesDeAgir(); // confere contra o dado mais fresco da planilha antes de decidir
+
   let salvos=0, erros=0;
   const hodosParaSync=[], pneusParaSync=[];
-  document.querySelectorAll('input[id^="km_"]').forEach(el=>{
-    const cav=el.dataset.cav;
-    const v=parseInt(el.value)||0;
-    if(v<=0) return;
+  digitados.forEach(({cav,v})=>{
     const old=CFG.hodos[cav]||0;
-    if(v<old){erros++;return;} // não deixa diminuir
+    if(v<old){erros++;return;} // não deixa diminuir — usando o valor JÁ atualizado da planilha
     CFG.hodos[cav]=v;
     hodosParaSync.push([cav,v]);
-    // atualizar kmVida dos pneus
     const carr=CFG.pairs[cav];
     P.filter(p=>p.status==='veiculo'&&(p.cavalo===cav||(carr&&p.carreta===carr))).forEach(p=>{
       const kmNovo=Math.max(0,v-(p.kmInst||0));
@@ -1542,13 +1569,11 @@ function salvarKmLote(){
     });
     salvos++;
   });
-  if(salvos>0){toast(`✓ ${salvos} hodômetros salvos`+(erros?` (${erros} ignorados: KM menor que atual)`:''),'#22c55e');}
-  else toast('Nenhum KM válido para salvar','#eab308');
-  renderMain();
-  (async()=>{
-    for(const [cav,v] of hodosParaSync){ await syncHodometro(cav,v); }
-    for(const p of pneusParaSync){ await syncPneu(p); }
-  })();
+  if(salvos>0){toast(`✓ ${salvos} hodômetros salvos`+(erros?` (${erros} ignorados: KM já era maior na planilha)`:''),'#22c55e');}
+  else toast('Nenhum hodômetro salvo — todos já estavam com KM igual ou maior na planilha','#eab308');
+  renderSidebar(); renderMain();
+  for(const [cav,v] of hodosParaSync){ await syncHodometro(cav,v); }
+  for(const p of pneusParaSync){ await syncPneu(p); }
 }
 
 function renderEngate(mc){
@@ -2093,6 +2118,18 @@ document.getElementById('dbg').onclick=closeDet;
 // ============================
 let RELMOD_FAB = 'DUNLOP';
 let RELMOD_MODELOS = new Set(['SP320','SP835']);
+let RELMOD_SORT_COL = 'km'; // fogo | modelo | status | veiculo | posicao | sulco | km
+let RELMOD_SORT_DIR = 'desc'; // asc | desc
+
+function relModOrdenar(col){
+  if(RELMOD_SORT_COL===col){ RELMOD_SORT_DIR = RELMOD_SORT_DIR==='desc'?'asc':'desc'; }
+  else { RELMOD_SORT_COL = col; RELMOD_SORT_DIR = 'desc'; }
+  nav('rel-modelo');
+}
+function relModSetaOrdenacao(col){
+  if(RELMOD_SORT_COL!==col) return '';
+  return RELMOD_SORT_DIR==='desc' ? ' ▼' : ' ▲';
+}
 
 function relModSetFab(v){ RELMOD_FAB = v.toUpperCase(); nav('rel-modelo'); }
 function relModToggleModelo(m){
@@ -2107,7 +2144,18 @@ function exportarRelModeloExcel(){
   if(!filtrados.length){ toast('Nada para exportar com esse filtro', '#eab308'); return; }
 
   const stMap = {'veiculo':'Em Veículo','almox':'Almoxarifado','reforma':'Reforma','sucata':'Sucata'};
-  const linhas = filtrados.slice().sort((a,b)=>(b.kmVida||0)-(a.kmVida||0));
+  const sortKeyFns = {
+    fogo: p=>p.fogo||'', modelo: p=>p.modelo||'', status: p=>p.status||'',
+    veiculo: p=>p.cavalo||p.carreta||'', posicao: p=>p.posicao||'',
+    sulco: p=>p.sulcoMenor||0, km: p=>p.kmVida||0
+  };
+  const sortFn = sortKeyFns[RELMOD_SORT_COL] || sortKeyFns.km;
+  const dir = RELMOD_SORT_DIR==='asc' ? 1 : -1;
+  const linhas = filtrados.slice().sort((a,b)=>{
+    const va=sortFn(a), vb=sortFn(b);
+    if(typeof va==='number') return (va-vb)*dir;
+    return String(va).localeCompare(String(vb))*dir;
+  });
 
   const dados = [
     ['Fogo','Fabricante','Modelo','Status','Veículo','Posição','Sulco (mm)','KM Rodado']
@@ -2121,6 +2169,7 @@ function exportarRelModeloExcel(){
 
   const ws = XLSX.utils.aoa_to_sheet(dados);
   ws['!cols'] = [{wch:10},{wch:14},{wch:14},{wch:12},{wch:12},{wch:10},{wch:11},{wch:12}];
+  ws['!autofilter'] = { ref: ws['!ref'] }; // ativa as setinhas de filtro/ordenação em cada coluna no Excel
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Relatorio');
   const nomeModelos = RELMOD_MODELOS.size ? [...RELMOD_MODELOS].join('-') : 'todos';
@@ -2143,7 +2192,18 @@ function renderRelModelo(mc){
   const porModelo = {};
   filtrados.forEach(p=>{ porModelo[p.modelo] = (porModelo[p.modelo]||0)+1; });
 
-  const linhas = filtrados.slice().sort((a,b)=>(b.kmVida||0)-(a.kmVida||0));
+  const sortKeyFns = {
+    fogo: p=>p.fogo||'', modelo: p=>p.modelo||'', status: p=>p.status||'',
+    veiculo: p=>p.cavalo||p.carreta||'', posicao: p=>p.posicao||'',
+    sulco: p=>p.sulcoMenor||0, km: p=>p.kmVida||0
+  };
+  const sortFn = sortKeyFns[RELMOD_SORT_COL] || sortKeyFns.km;
+  const dir = RELMOD_SORT_DIR==='asc' ? 1 : -1;
+  const linhas = filtrados.slice().sort((a,b)=>{
+    const va=sortFn(a), vb=sortFn(b);
+    if(typeof va==='number') return (va-vb)*dir;
+    return String(va).localeCompare(String(vb))*dir;
+  });
 
   mc.innerHTML = `
   <div class="vh"><div><h1>🔎 Por Fabricante / Modelo</h1><div class="sub">Filtre por fabricante e modelo — KM rodado e posição de cada pneu</div></div>
@@ -2181,10 +2241,13 @@ function renderRelModelo(mc){
     <div style="overflow-x:auto;border:1px solid var(--bd);border-radius:12px">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
         <thead><tr style="background:var(--bg2);text-align:left">
-          <th style="padding:10px 14px">Fogo</th><th style="padding:10px 14px">Modelo</th>
-          <th style="padding:10px 14px">Status</th><th style="padding:10px 14px">Veículo</th>
-          <th style="padding:10px 14px">Posição</th><th style="padding:10px 14px" class="r">Sulco</th>
-          <th style="padding:10px 14px" class="r">KM Rodado</th>
+          <th style="padding:10px 14px;cursor:pointer;user-select:none" onclick="relModOrdenar('fogo')">Fogo${relModSetaOrdenacao('fogo')}</th>
+          <th style="padding:10px 14px;cursor:pointer;user-select:none" onclick="relModOrdenar('modelo')">Modelo${relModSetaOrdenacao('modelo')}</th>
+          <th style="padding:10px 14px;cursor:pointer;user-select:none" onclick="relModOrdenar('status')">Status${relModSetaOrdenacao('status')}</th>
+          <th style="padding:10px 14px;cursor:pointer;user-select:none" onclick="relModOrdenar('veiculo')">Veículo${relModSetaOrdenacao('veiculo')}</th>
+          <th style="padding:10px 14px;cursor:pointer;user-select:none" onclick="relModOrdenar('posicao')">Posição${relModSetaOrdenacao('posicao')}</th>
+          <th style="padding:10px 14px;cursor:pointer;user-select:none" class="r" onclick="relModOrdenar('sulco')">Sulco${relModSetaOrdenacao('sulco')}</th>
+          <th style="padding:10px 14px;cursor:pointer;user-select:none" class="r" onclick="relModOrdenar('km')">KM Rodado${relModSetaOrdenacao('km')}</th>
         </tr></thead>
         <tbody>
         ${linhas.map(p=>{
