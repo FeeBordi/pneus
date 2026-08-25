@@ -328,6 +328,47 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
 .sb-user .nm{flex:1;font-weight:700;color:var(--txt)}
 .sb-user .lo{cursor:pointer;color:var(--txt3);font-size:11px;text-decoration:underline;white-space:nowrap}
 .sb-user .lo:hover{color:var(--red)}
+/* ═══════════ RELATÓRIO EXECUTIVO — tema claro, estilo documento ═══════════ */
+.exec-wrap{
+  background:#F7F8FA;color:#12181F;border-radius:14px;padding:32px 36px 40px;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+.exec-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #12181F;padding-bottom:18px;margin-bottom:28px}
+.exec-head h1{font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;margin:0;color:#12181F;letter-spacing:-.01em}
+.exec-head .sub{font-size:12.5px;color:#5B6472;margin-top:4px}
+.exec-head .meta{text-align:right;font-size:11px;color:#8A93A2;line-height:1.6}
+.exec-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:32px}
+.exec-kpi{background:#fff;border:1px solid #E3E7ED;border-radius:10px;padding:18px 16px}
+.exec-kpi .lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8A93A2;margin-bottom:8px}
+.exec-kpi .val{font-size:26px;font-weight:800;color:#12181F;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.exec-kpi .ctx{font-size:11px;color:#5B6472;margin-top:5px}
+.exec-kpi.accent .val{color:#0F6FA3}
+.exec-kpi.warn .val{color:#C77D2E}
+.exec-kpi.danger .val{color:#B23B3B}
+.exec-section{margin-bottom:30px}
+.exec-section h2{font-family:Georgia,'Times New Roman',serif;font-size:15px;font-weight:700;color:#12181F;margin:0 0 4px;padding-bottom:8px;border-bottom:1px solid #E3E7ED}
+.exec-section .desc{font-size:11.5px;color:#8A93A2;margin-bottom:16px}
+.exec-healthbar{display:flex;height:38px;border-radius:8px;overflow:hidden;border:1px solid #E3E7ED}
+.exec-healthbar .seg{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;transition:width .3s}
+.exec-healthleg{display:flex;gap:22px;margin-top:12px;font-size:11.5px;color:#5B6472}
+.exec-healthleg span{display:flex;align-items:center;gap:6px}
+.exec-healthleg i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.exec-rank{display:flex;flex-direction:column;gap:10px}
+.exec-rank-row{display:grid;grid-template-columns:170px 1fr 60px;align-items:center;gap:12px;font-size:12.5px}
+.exec-rank-row .nm{color:#12181F;font-weight:600}
+.exec-rank-track{background:#EEF0F3;border-radius:5px;height:10px;overflow:hidden}
+.exec-rank-fill{height:100%;background:#0F6FA3;border-radius:5px}
+.exec-rank-row .n{text-align:right;color:#5B6472;font-variant-numeric:tabular-nums}
+.exec-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.exec-table th{text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8A93A2;padding:8px 10px;border-bottom:1px solid #12181F}
+.exec-table td{padding:10px 10px;border-bottom:1px solid #EEF0F3;color:#12181F}
+.exec-table td.r,.exec-table th.r{text-align:right;font-variant-numeric:tabular-nums}
+.exec-foot{margin-top:8px;padding-top:16px;border-top:1px solid #E3E7ED;font-size:10.5px;color:#8A93A2;display:flex;justify-content:space-between}
+@media print{
+  .exec-wrap{background:#fff!important;padding:0!important;border-radius:0!important}
+}
+@media (max-width:900px){ .exec-kpis{grid-template-columns:repeat(2,1fr)} }
+
 @media print{
   body{background:#fff!important}
   .sidebar,#login-screen,.km-modal,.toast,.btn{display:none!important}
@@ -370,6 +411,7 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
   </div>
   <div class="sb-sec">Operação</div>
   <div class="sb-item" id="sb-home"><span class="ic">🏠</span> Dashboard</div>
+  <div class="sb-item" id="sb-exec"><span class="ic">📊</span> Relatório Executivo</div>
   <div class="sb-item" id="sb-frota"><span class="ic">🚛</span> Frota <span class="sb-cnt" id="cnt-frota">0</span></div>
   <div class="sb-item" id="sb-almox"><span class="ic">📦</span> Almoxarifado <span class="sb-cnt" id="cnt-almox">0</span></div>
   <div class="sb-item" id="sb-reforma"><span class="ic">🔧</span> Reformas <span class="sb-cnt" id="cnt-reforma">0</span></div>
@@ -449,6 +491,24 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn primary" style="flex:1;justify-content:center;background:var(--green);color:#fff" onclick="confirmarAtribuirFogo()">Confirmar</button>
       <button class="btn" onclick="fecharAtribuirFogo()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="km-modal" id="sucata-modal">
+  <div class="km-box">
+    <h3>🗑️ Motivo do Sucateamento</h3>
+    <div class="hint" id="sucata-info" style="margin-bottom:12px"></div>
+    <div class="fg2"><label>Motivo</label>
+      <select id="sucata-motivo-select" onchange="sucataMotivoMudou(this.value)"
+        style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-size:14px"></select>
+    </div>
+    <div class="fg2" style="margin-top:8px">
+      <input id="sucata-motivo-outro" placeholder="Descreva o motivo..." style="display:none;width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-size:14px">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn primary" style="flex:1;justify-content:center;background:var(--red);color:#fff" onclick="confirmarMotivoSucata()">Confirmar Sucateamento</button>
+      <button class="btn" onclick="fecharMotivoSucata()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -587,7 +647,8 @@ function pneuParaSheet_(p){
     fogo: p.fogo, fabricante: p.fabricante||'', modelo: p.modelo||'', dot: p.dot||'',
     vida: p.vida||'', valorU: p.valorU||0, status: p.status||'almox',
     cavalo: p.status==='veiculo'?(p.cavalo||''):'', carreta: p.status==='veiculo'?(p.carreta||''):'',
-    posicao: p.status==='veiculo'?(p.posicao||''):'', sulcoMenor: p.sulcoMenor||0, kmVida: p.kmVida||0
+    posicao: p.status==='veiculo'?(p.posicao||''):'', sulcoMenor: p.sulcoMenor||0, kmVida: p.kmVida||0,
+    motivoSucata: p.status==='sucata'?(p.motivoSucata||''):''
   };
 }
 
@@ -641,7 +702,8 @@ async function load(){
       status: p.status||'almox', cavalo: p.cavalo||null, carreta: p.carreta||null, posicao: p.posicao||null,
       sulcoMenor: Number(p.sulcoMenor)||0, sulcos:[Number(p.sulcoMenor)||0,Number(p.sulcoMenor)||0,Number(p.sulcoMenor)||0,Number(p.sulcoMenor)||0],
       kmVida: Number(p.kmVida)||0, kmTotal: Number(p.kmVida)||0, kmInst:0,
-      almoxarifado:'PNEUS', fornecedor:'', numDoc:'', dataEmissao:'', dimensao:'295/80R22,5', bandaRodagem:''
+      almoxarifado:'PNEUS', fornecedor:'', numDoc:'', dataEmissao:'', dimensao:'295/80R22,5', bandaRodagem:'',
+      motivoSucata: p.motivoSucata||''
     };
   });
 
@@ -725,7 +787,7 @@ function addM(fogo,tipo,cav,carr,pos,sulco,km){MV.push({id:uid(),data:td(),fogo,
 let ALOCQ="",ALOC_FOGO=null;
 let KMQ="";
 let VIEW='home', VP={}, KM_CAV=null;
-let mDrag=null, sTab='almox', MAP_IDX=null;
+let mDrag=null, sTab='almox', MAP_IDX=null, KM_ORIGEM='frota-map';
 
 function nav(v,p={}){VIEW=v;VP=p;renderSidebar();renderMain();}
 function renderSidebar(){
@@ -770,6 +832,7 @@ function renderMain(){
     else if(VIEW==='add-lote') renderAddLote(mc);
     else if(VIEW==='sem-fogo') renderSemFogo(mc);
     else if(VIEW==='trocas-periodo') renderTrocasPeriodo(mc);
+    else if(VIEW==='exec') renderDashboardExec(mc);
     else if(VIEW==='rel-modelo') renderRelModelo(mc);
     else if(VIEW==='edit') renderCadastro(mc,VP.fogo);
     else if(VIEW==='backup') renderBackup(mc);
@@ -849,6 +912,7 @@ function filtFrota(q){
         ${na>0?`<span class="badge yellow">${na} atenção</span>`:''}
         ${nc===0&&na===0&&vp.length>0?'<span class="badge green">OK</span>':''}
         ${vp.length===0?'<span class="badge gray">Sem pneus</span>':''}
+        <button class="btn sm" onclick="event.stopPropagation();abrirKmDaFrota('${par[0]}',${idx})" style="background:var(--blue);color:#fff;font-weight:600;padding:5px 12px;font-size:12px;border-radius:7px">📏 KM</button>
       </div>
     </div>`;
   }).join('');
@@ -1112,22 +1176,77 @@ async function dropPos(targetPos,targetPlaca,isCarr){
 function dropZone(zone,cav,carr){
   if(!mDrag) return;
   const {fogo,from}=mDrag;
+  if(zone==='sucata'){
+    // Sucatear pede o motivo antes de confirmar — não completa a ação se o usuário cancelar
+    abrirMotivoSucata(fogo, from);
+    return;
+  }
   const pneu=getPneu(fogo); if(!pneu){mDrag=null;return;}
   if(from==='veiculo'){pneu.cavalo=null;pneu.carreta=null;pneu.posicao=null;}
   pneu.status=zone;
-  const t={'almox':'Saída para Almoxarifado','reforma':'Envio para Reforma','sucata':'Sucata'};
+  const t={'almox':'Saída para Almoxarifado','reforma':'Envio para Reforma'};
   addM(fogo,t[zone]||zone,'','','',pneu.sulcoMenor,0);
-  toast(fogo+' → '+(zone==='almox'?'Almox.':zone==='reforma'?'Reforma':'Sucata'),'#38bdf8');
+  toast(fogo+' → '+(zone==='almox'?'Almox.':'Reforma'),'#38bdf8');
   mDrag=null;nav('frota-map',{idx:MAP_IDX});
   syncPneu(pneu);
+}
+
+// ── Motivo do Sucateamento ──
+const MOTIVOS_SUCATA = [
+  'Desgaste natural (fim de vida útil)','Perfuração irreparável','Estouro / bolha',
+  'Corte lateral','Separação de lona/carcaça','Impacto / dano mecânico','Reforma reprovada','Outro'
+];
+let SUCATA_FOGO=null, SUCATA_FROM=null, SUCATA_MAP_IDX=null;
+function abrirMotivoSucata(fogo, from){
+  SUCATA_FOGO=fogo; SUCATA_FROM=from; SUCATA_MAP_IDX=MAP_IDX;
+  const sel=document.getElementById('sucata-motivo-select');
+  sel.innerHTML='<option value="">Selecione o motivo...</option>'+MOTIVOS_SUCATA.map(m=>`<option value="${m}">${m}</option>`).join('');
+  document.getElementById('sucata-motivo-outro').style.display='none';
+  document.getElementById('sucata-motivo-outro').value='';
+  document.getElementById('sucata-info').textContent='Pneu '+fogo;
+  document.getElementById('sucata-modal').classList.add('open');
+}
+function sucataMotivoMudou(v){
+  document.getElementById('sucata-motivo-outro').style.display = v==='Outro' ? 'block' : 'none';
+}
+function fecharMotivoSucata(){
+  document.getElementById('sucata-modal').classList.remove('open');
+  mDrag=null; SUCATA_FOGO=null;
+  if(SUCATA_MAP_IDX!=null) nav('frota-map',{idx:SUCATA_MAP_IDX});
+}
+async function confirmarMotivoSucata(){
+  const sel=document.getElementById('sucata-motivo-select').value;
+  const outro=document.getElementById('sucata-motivo-outro').value.trim();
+  if(!sel){ toast('Selecione o motivo do sucateamento', '#eab308'); return; }
+  const motivo = sel==='Outro' ? (outro||'Outro (não especificado)') : sel;
+
+  const pneu=getPneu(SUCATA_FOGO);
+  const idxVolta=SUCATA_MAP_IDX;
+  if(!pneu){ fecharMotivoSucata(); return; }
+  if(SUCATA_FROM==='veiculo'){ pneu.cavalo=null; pneu.carreta=null; pneu.posicao=null; }
+  pneu.status='sucata';
+  pneu.motivoSucata=motivo;
+  addM(pneu.fogo,'Sucata','','','',pneu.sulcoMenor,0);
+  toast(pneu.fogo+' → Sucata ('+motivo+')','#ef4444');
+
+  document.getElementById('sucata-modal').classList.remove('open');
+  mDrag=null; SUCATA_FOGO=null;
+  if(idxVolta!=null) nav('frota-map',{idx:idxVolta});
+  await syncPneu(pneu);
 }
 
 // ============================
 //  KM MODAL
 // ============================
 let KM_HODO_ORIGINAL=0, KM_ABERTO_EM=0;
+function abrirKmDaFrota(cav, idx){
+  MAP_IDX = idx;
+  openKmModal(cav);
+  KM_ORIGEM = 'frota'; // sobrescreve DEPOIS, já que openKmModal reseta pro padrão
+}
 function openKmModal(cav){
   KM_CAV=cav;
+  KM_ORIGEM='frota-map'; // padrão — abrirKmDaFrota() sobrescreve isso logo depois quando vem da lista
   const h=CFG.hodos[cav]||0;
   KM_HODO_ORIGINAL=h; KM_ABERTO_EM=Date.now();
   document.getElementById('km-title').textContent='Hodômetro: '+cav;
@@ -1136,6 +1255,9 @@ function openKmModal(cav){
   document.getElementById('km-modal').classList.add('open');
 }
 function closeKm(){document.getElementById('km-modal').classList.remove('open');KM_CAV=null;}
+function navVoltarKm(){
+  if(KM_ORIGEM==='frota') nav('frota'); else nav('frota-map',{idx:MAP_IDX||0});
+}
 async function saveKm(){
   if(!KM_CAV) return;
   const cav=KM_CAV; // guarda antes de qualquer coisa poder zerar KM_CAV
@@ -1151,12 +1273,12 @@ async function saveKm(){
   const atual=CFG.hodos[cav]||0;
   if(atual!==KM_HODO_ORIGINAL){
     const seguir=confirm('Atenção: o hodômetro deste veículo mudou desde que você abriu esta tela — está agora em '+fkm(atual)+' (era '+fkm(KM_HODO_ORIGINAL)+' quando você abriu).\n\nDeseja continuar mesmo assim e salvar '+fkm(v)+'?');
-    if(!seguir){ closeKm(); nav('frota-map',{idx:MAP_IDX||0}); return; }
+    if(!seguir){ closeKm(); navVoltarKm(); return; }
   }
   const movRecente=MV.filter(m=>(m.cavalo===cav||m.carreta===CFG.pairs[cav])&&new Date(m.data).getTime()>KM_ABERTO_EM);
   if(movRecente.length){
     const seguir=confirm('Atenção: houve '+movRecente.length+' movimentação(ões) de pneu nesse veículo desde que você abriu esta tela.\n\nDeseja continuar mesmo assim?');
-    if(!seguir){ closeKm(); nav('frota-map',{idx:MAP_IDX||0}); return; }
+    if(!seguir){ closeKm(); navVoltarKm(); return; }
   }
 
   if(v<atual){toast('KM não pode ser menor que o atual!','#ef4444');return;}
@@ -1168,10 +1290,11 @@ async function saveKm(){
     const kmNovo=Math.max(0,v-(p.kmInst||0));
     if(kmNovo>p.kmVida){ p.kmVida=kmNovo; afetados.push(p); }
   });
-  closeKm();toast('Hodômetro atualizado: '+fkm(v),'#22c55e');renderSidebar();nav('frota-map',{idx:MAP_IDX||0});
+  closeKm();toast('Hodômetro atualizado: '+fkm(v),'#22c55e');renderSidebar();navVoltarKm();
   await syncHodometro(cav, v); for(const p of afetados){ await syncPneu(p); }
 }
 document.getElementById('km-modal').onclick=e=>{if(e.target===document.getElementById('km-modal'))closeKm();};
+document.getElementById('sucata-modal').onclick=e=>{if(e.target===document.getElementById('sucata-modal'))fecharMotivoSucata();};
 
 // ============================
 //  ESTOQUE + REFORMADORA
@@ -1973,6 +2096,13 @@ function renderCadastro(mc,fogoEdit=null){
     <div class="fg2"><label>Almoxarifado</label>
       <select name="almoxarifado">${ALMOXS.map(a=>`<option value="${a}" ${v('almoxarifado')===a?'selected':''}>${a}</option>`).join('')}</select>
     </div>
+    <div class="fg2" id="fld-motivo-sucata" style="${pe&&pe.status==='sucata'?'':'display:none'}"><label>Motivo do Sucateamento</label>
+      <select name="motivoSucata" onchange="document.getElementById('fld-motivo-sucata-outro').style.display=this.value==='Outro'?'':'none'">
+        <option value="">Selecione...</option>
+        ${MOTIVOS_SUCATA.map(m=>`<option value="${m}" ${v('motivoSucata')===m?'selected':''}>${m}</option>`).join('')}
+      </select>
+      <input name="motivoSucataOutro" id="fld-motivo-sucata-outro" placeholder="Descreva..." value="${v('motivoSucata') && !MOTIVOS_SUCATA.includes(v('motivoSucata'))?v('motivoSucata'):''}" style="margin-top:6px;${v('motivoSucata')==='Outro'?'':'display:none'}">
+    </div>
     <div class="fg2" id="fld-cav" style="${pe&&pe.status==='veiculo'?'':'display:none'}"><label>Cavalo</label>
       <input name="cavalo" list="dl-cav" value="${v('cavalo')}"><datalist id="dl-cav">${PARES_DEFAULT.map(p=>`<option value="${p[0]}">`).join('')}</datalist>
     </div>
@@ -2011,12 +2141,15 @@ function updModelos(fab){
   const mods=[...(MODS_FAB[fab]||[]),...P.filter(p=>p.fabricante===fab).map(p=>p.modelo)].filter((v,i,a)=>a.indexOf(v)===i).sort();
   s.innerHTML=`<option value="">Selecione...</option>`+mods.map(m=>`<option value="${m}">${m}</option>`).join('');
 }
-function togVehFlds(v){['fld-cav','fld-carr','fld-pos'].forEach(id=>{const el=document.getElementById(id);if(el) el.style.display=v==='veiculo'?'':'none';});}
+function togVehFlds(v){['fld-cav','fld-carr','fld-pos'].forEach(id=>{const el=document.getElementById(id);if(el) el.style.display=v==='veiculo'?'':'none';});const fm=document.getElementById('fld-motivo-sucata');if(fm) fm.style.display=v==='sucata'?'':'none';}
 function submitCad(e,fogoEdit){
   e.preventDefault();
   const fd=new FormData(e.target); const d=Object.fromEntries(fd);
+  // Resolve o motivo do sucateamento (usa o texto livre quando for "Outro")
+  if(d.motivoSucata==='Outro') d.motivoSucata=(d.motivoSucataOutro||'').trim()||'Outro (não especificado)';
   // ─── VALIDAÇÕES ───
   const erros=[];
+  if(d.status==='sucata'&&!d.motivoSucata) erros.push('Selecione o motivo do sucateamento');
   if(!d.fabricante) erros.push('Fabricante é obrigatório');
   if(!d.modelo) erros.push('Modelo é obrigatório');
   // Sem fogo informado = pneu novo aguardando numeração → gera código provisório
@@ -2057,7 +2190,7 @@ function submitCad(e,fogoEdit){
   d.fogo=fogo;
   const sulcos=[parseFloat(d.s1||sul)||sul,parseFloat(d.s2||sul)||sul,parseFloat(d.s3||sul)||sul,parseFloat(d.s4||sul)||sul];
   const pneu=fogoEdit?getPneu(fogoEdit):{id:uid(),dataCadastro:td()};
-  Object.assign(pneu,{fogo:d.fogo,dot:d.dot||'',fabricante:d.fabricante,modelo:d.modelo,dimensao:d.dimensao||'295/80R22,5',vida:d.vida||VIDAS[0],bandaRodagem:d.banda||'',sulcoMenor:sul,sulcos,kmVida:parseFloat(d.kmRodado)||0,kmTotal:parseFloat(d.kmRodado)||0,kmInst:0,valorU:parseFloat(d.valorU)||0,valorTotal:parseFloat(d.valorU)||0,almoxarifado:d.almoxarifado||'PNEUS',status:d.status,cavalo:d.status==='veiculo'?d.cavalo||null:null,carreta:d.status==='veiculo'?d.carreta||null:null,posicao:d.status==='veiculo'?d.posicao||null:null,fornecedor:d.fornecedor||'',numDoc:d.numDoc||'',dataEmissao:d.dataEmissao||td()});
+  Object.assign(pneu,{fogo:d.fogo,dot:d.dot||'',fabricante:d.fabricante,modelo:d.modelo,dimensao:d.dimensao||'295/80R22,5',vida:d.vida||VIDAS[0],bandaRodagem:d.banda||'',sulcoMenor:sul,sulcos,kmVida:parseFloat(d.kmRodado)||0,kmTotal:parseFloat(d.kmRodado)||0,kmInst:0,valorU:parseFloat(d.valorU)||0,valorTotal:parseFloat(d.valorU)||0,almoxarifado:d.almoxarifado||'PNEUS',status:d.status,cavalo:d.status==='veiculo'?d.cavalo||null:null,carreta:d.status==='veiculo'?d.carreta||null:null,posicao:d.status==='veiculo'?d.posicao||null:null,fornecedor:d.fornecedor||'',numDoc:d.numDoc||'',dataEmissao:d.dataEmissao||td(),motivoSucata:d.status==='sucata'?(d.motivoSucata||''):''});
   if(!fogoEdit) P.push(pneu);
   addM(pneu.fogo,fogoEdit?'Atualização':'Cadastro',pneu.cavalo,pneu.carreta,pneu.posicao,pneu.sulcoMenor,pneu.kmVida);
   toast(fogoEdit?'Atualizado!':'Cadastrado!','#22c55e');nav('todos');
@@ -2325,8 +2458,8 @@ function renderRel(mc,tipo){
     const list=P.filter(p=>p.status==='sucata');
     const totalP=list.reduce((s,p)=>s+(p.valorU||0),0);
     content=`<div class="kpis"><div class="kpi r"><div class="lbl">Sucateados</div><div class="val">${list.length}</div></div><div class="kpi r"><div class="lbl">Valor Perdido</div><div class="val" style="font-size:18px">${fr(totalP)}</div></div></div>
-    <div class="tbl"><table><thead><tr><th>Fogo</th><th>Fabricante</th><th>Modelo</th><th class="r">Sulco Final</th><th class="r">KM Rodado</th><th class="r">Valor</th><th class="r">CPK</th></tr></thead>
-    <tbody>${list.map(p=>{ const km=p.kmVida; const cpkV=km>0?(p.valorU||0)/km:0; return`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td><td>${p.fabricante}</td><td>${p.modelo}</td><td class="r">${sbadge(p.sulcoMenor)}</td><td class="r">${fkm(km)}</td><td class="r">${fr(p.valorU)}</td><td class="r">${cpkV>0?'R$ '+cpkV.toFixed(4):'—'}</td></tr>`;}).join('')||'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--txt3)">Nenhum pneu sucateado</td></tr>'}</tbody></table></div>`;
+    <div class="tbl"><table><thead><tr><th>Fogo</th><th>Fabricante</th><th>Modelo</th><th class="r">Sulco Final</th><th class="r">KM Rodado</th><th class="r">Valor</th><th class="r">CPK</th><th>Motivo</th></tr></thead>
+    <tbody>${list.map(p=>{ const km=p.kmVida; const cpkV=km>0?(p.valorU||0)/km:0; return`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td><td>${p.fabricante}</td><td>${p.modelo}</td><td class="r">${sbadge(p.sulcoMenor)}</td><td class="r">${fkm(km)}</td><td class="r">${fr(p.valorU)}</td><td class="r">${cpkV>0?'R$ '+cpkV.toFixed(4):'—'}</td><td style="font-size:12px;color:var(--txt2)">${p.motivoSucata||'—'}</td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--txt3)">Nenhum pneu sucateado</td></tr>'}</tbody></table></div>`;
   }
   mc.innerHTML=`<div class="vh"><div><h1>📄 ${titles[tipo]||'Relatório'}</h1></div><button class="btn" onclick="window.print()">🖨️ Imprimir</button></div>
   <div class="vb"><div class="card"><div class="cb">${content}</div></div></div>`;
@@ -2368,6 +2501,135 @@ function labelTroca_(chave, modo){
   if(modo==='semana'){ const [y,s]=chave.split('-S'); return 'Sem '+s+'/'+y.slice(2); }
   const [y,m]=chave.split('-'); const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   return meses[parseInt(m,10)-1]+'/'+y.slice(2);
+}
+
+// ============================
+//  RELATÓRIO EXECUTIVO
+// ============================
+function exportarExecExcel(){
+  const ativos=P.filter(p=>p.status!=='sucata');
+  const byFab={};
+  ativos.forEach(p=>{ const f=p.fabricante||'—'; if(!byFab[f]) byFab[f]={qtd:0,invest:0}; byFab[f].qtd++; byFab[f].invest+=p.valorU||0; });
+  const totalQtd=ativos.length||1;
+
+  const dados=[['Fabricante','Qtd. Pneus Ativos','Investimento','Participação (%)']];
+  Object.entries(byFab).sort((a,b)=>b[1].qtd-a[1].qtd).forEach(([f,d])=>{
+    dados.push([f, d.qtd, d.invest, ((d.qtd/totalQtd)*100).toFixed(1)+'%']);
+  });
+
+  const ws=XLSX.utils.aoa_to_sheet(dados);
+  ws['!cols']=[{wch:16},{wch:16},{wch:14},{wch:16}];
+  ws['!autofilter']={ref:ws['!ref']};
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Resumo Executivo');
+  XLSX.writeFile(wb,'relatorio_executivo_pneus.xlsx');
+}
+
+function renderDashboardExec(mc){
+  const ativos=P.filter(p=>p.status!=='sucata');
+  const emVeiculo=P.filter(p=>p.status==='veiculo');
+  const sucateados=P.filter(p=>p.status==='sucata');
+
+  const investAtivo=ativos.reduce((s,p)=>s+(p.valorU||0),0);
+  const valorPerdido=sucateados.reduce((s,p)=>s+(p.valorU||0),0);
+  const cpkList=sucateados.filter(p=>(p.kmVida||0)>0).map(p=>(p.valorU||0)/p.kmVida);
+  const cpkMedio=cpkList.length ? cpkList.reduce((a,b)=>a+b,0)/cpkList.length : 0;
+
+  // Saúde da frota (só pneus em veículo)
+  const bom=emVeiculo.filter(p=>sst(p.sulcoMenor)==='sg').length;
+  const atencao=emVeiculo.filter(p=>sst(p.sulcoMenor)==='sy').length;
+  const critico=emVeiculo.filter(p=>sst(p.sulcoMenor)==='sr').length;
+  const totalSaude=emVeiculo.length||1;
+  const pctBom=(bom/totalSaude*100), pctAtencao=(atencao/totalSaude*100), pctCritico=(critico/totalSaude*100);
+
+  // Motivos de sucateamento
+  const porMotivo={};
+  sucateados.forEach(p=>{ const m=p.motivoSucata||'Não informado'; porMotivo[m]=(porMotivo[m]||0)+1; });
+  const rankMotivos=Object.entries(porMotivo).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxMotivo=rankMotivos.length?rankMotivos[0][1]:1;
+
+  // Fabricantes (frota ativa)
+  const byFab={};
+  ativos.forEach(p=>{ const f=p.fabricante||'—'; if(!byFab[f]) byFab[f]={qtd:0,invest:0}; byFab[f].qtd++; byFab[f].invest+=p.valorU||0; });
+  const fabRows=Object.entries(byFab).sort((a,b)=>b[1].qtd-a[1].qtd);
+  const totalQtdFab=ativos.length||1;
+
+  const agora=new Date();
+  const dataStr=agora.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  const horaStr=agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
+  mc.innerHTML = `
+  <div class="vh"><div><h1>📊 Relatório Executivo</h1><div class="sub">Visão consolidada da frota de pneus — pronta para apresentação</div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="exportarExecExcel()" style="background:var(--green);color:#fff;font-weight:600;padding:8px 14px">📊 Baixar Excel</button>
+      <button class="btn" onclick="window.print()" style="background:var(--bg2);border:1px solid var(--bd);color:var(--txt2);padding:8px 14px">🖨️ Imprimir / PDF</button>
+    </div>
+  </div>
+  <div class="vb">
+  <div class="exec-wrap">
+
+    <div class="exec-head">
+      <div>
+        <h1>Gestão de Pneus — Transccema</h1>
+        <div class="sub">Relatório executivo consolidado</div>
+      </div>
+      <div class="meta">Gerado em ${dataStr}<br>às ${horaStr}</div>
+    </div>
+
+    <div class="exec-kpis">
+      <div class="exec-kpi"><div class="lbl">Frota Ativa</div><div class="val">${PARES_DEFAULT.length}</div><div class="ctx">veículos</div></div>
+      <div class="exec-kpi accent"><div class="lbl">Pneus em Operação</div><div class="val">${emVeiculo.length}</div><div class="ctx">de ${ativos.length} ativos</div></div>
+      <div class="exec-kpi"><div class="lbl">Investimento Ativo</div><div class="val" style="font-size:20px">${fr(investAtivo)}</div><div class="ctx">em pneus ativos</div></div>
+      <div class="exec-kpi danger"><div class="lbl">Perdido em Sucata</div><div class="val" style="font-size:20px">${fr(valorPerdido)}</div><div class="ctx">${sucateados.length} pneus baixados</div></div>
+      <div class="exec-kpi warn"><div class="lbl">CPK Médio (sucata)</div><div class="val" style="font-size:20px">${cpkMedio>0?'R$ '+cpkMedio.toFixed(4).replace('.',','):'—'}</div><div class="ctx">custo por km rodado</div></div>
+    </div>
+
+    <div class="exec-section">
+      <h2>Saúde da Frota</h2>
+      <div class="desc">Distribuição dos ${emVeiculo.length} pneus atualmente em veículo, por profundidade de sulco</div>
+      <div class="exec-healthbar">
+        ${pctBom>0?`<div class="seg" style="width:${pctBom}%;background:#2E7D5B">${pctBom>=8?pctBom.toFixed(0)+'%':''}</div>`:''}
+        ${pctAtencao>0?`<div class="seg" style="width:${pctAtencao}%;background:#C77D2E">${pctAtencao>=8?pctAtencao.toFixed(0)+'%':''}</div>`:''}
+        ${pctCritico>0?`<div class="seg" style="width:${pctCritico}%;background:#B23B3B">${pctCritico>=8?pctCritico.toFixed(0)+'%':''}</div>`:''}
+      </div>
+      <div class="exec-healthleg">
+        <span><i style="background:#2E7D5B"></i>Bom — ${bom} pneus</span>
+        <span><i style="background:#C77D2E"></i>Atenção — ${atencao} pneus</span>
+        <span><i style="background:#B23B3B"></i>Crítico — ${critico} pneus</span>
+      </div>
+    </div>
+
+    <div class="exec-section">
+      <h2>Principais Motivos de Sucateamento</h2>
+      <div class="desc">Top ${rankMotivos.length} causas entre os ${sucateados.length} pneus baixados</div>
+      <div class="exec-rank">
+        ${rankMotivos.length ? rankMotivos.map(([m,n])=>`
+          <div class="exec-rank-row">
+            <div class="nm">${m}</div>
+            <div class="exec-rank-track"><div class="exec-rank-fill" style="width:${(n/maxMotivo*100)}%"></div></div>
+            <div class="n">${n}</div>
+          </div>`).join('') : '<div style="font-size:12.5px;color:#8A93A2">Nenhum pneu sucateado registrado ainda</div>'}
+      </div>
+    </div>
+
+    <div class="exec-section">
+      <h2>Investimento por Fabricante</h2>
+      <div class="desc">Considerando apenas pneus ativos (em veículo, almoxarifado ou reforma)</div>
+      <table class="exec-table">
+        <thead><tr><th>Fabricante</th><th class="r">Qtd. Pneus</th><th class="r">Investimento</th><th class="r">Participação</th></tr></thead>
+        <tbody>
+          ${fabRows.map(([f,d])=>`<tr><td>${f}</td><td class="r">${d.qtd}</td><td class="r">${fr(d.invest)}</td><td class="r">${(d.qtd/totalQtdFab*100).toFixed(1)}%</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="exec-foot">
+      <span>Transccema Transportes Rodoviários Ltda · Gestão de Pneus</span>
+      <span>Relatório gerado automaticamente a partir dos dados atuais do sistema</span>
+    </div>
+
+  </div>
+  </div>`;
 }
 
 function renderTrocasPeriodo(mc){
@@ -2600,7 +2862,7 @@ const SB_MAP={
   'sb-todos':'todos','sb-rel-mov':'rel-mov','sb-rel-vida':'rel-vida','sb-rel-fab':'rel-fab',
   'sb-rel-cpk':'rel-cpk','sb-rel-almox-rep':'rel-almox-rep','sb-rel-veh':'rel-veh','sb-rel-modelo':'rel-modelo',
   'sb-rel-suc':'rel-suc','sb-bi-suc':'bi-suc','sb-bi-pneu':'bi-pneu',
-  'sb-bi-alertas':'bi-alertas','sb-trocas':'trocas-periodo','sb-backup':'backup'
+  'sb-bi-alertas':'bi-alertas','sb-trocas':'trocas-periodo','sb-backup':'backup','sb-exec':'exec'
 };
 Object.entries(SB_MAP).forEach(([id,view])=>{
   const el=document.getElementById(id);
