@@ -1,0 +1,2509 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gestão de Pneus — Transccema</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#0f1216;--bg2:#141820;--panel:#191e28;--panel2:#1f2531;--panel3:#252c3a;--line:#2a3140;--line2:#394151;--txt:#eef1f6;--txt2:#a3adbf;--txt3:#6c7689;--accent:#f97316;--a2:#fb923c;--ad:rgba(249,115,22,.14);--green:#22c55e;--gbg:rgba(34,197,94,.13);--yellow:#eab308;--ybg:rgba(234,179,8,.14);--red:#ef4444;--rbg:rgba(239,68,68,.14);--blue:#38bdf8;--bbg:rgba(56,189,248,.13);--sw:230px}
+*{box-sizing:border-box;margin:0;padding:0}html,body{height:100%;overflow:hidden}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:7px;height:7px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:5px}
+input,select,textarea{font-family:inherit;font-size:14px;background:var(--panel2);color:var(--txt);border:1px solid var(--line2);border-radius:8px;padding:8px 12px;outline:none;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}select option{background:var(--panel2)}
+button{font-family:inherit;cursor:pointer}
+.sidebar{position:fixed;left:0;top:0;width:var(--sw);height:100%;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;z-index:20;overflow-y:auto}
+.sb-brand{padding:16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.sb-mark{width:36px;height:36px;border-radius:9px;background:conic-gradient(from 140deg,#fb923c,#f97316,#c2410c);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+.sb-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;line-height:1.2}
+.sb-sub{font-size:10px;color:var(--txt3);letter-spacing:.05em;text-transform:uppercase;margin-top:1px}
+.sb-sec{padding:14px 12px 5px;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.1em;font-weight:700}
+.sb-item{display:flex;align-items:center;gap:9px;padding:9px 13px;margin:1px 6px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:500;color:var(--txt2);transition:.12s;user-select:none;white-space:nowrap}
+.sb-item:hover{background:var(--panel2);color:var(--txt)}
+.sb-item.active{background:var(--ad);color:var(--a2)}
+.sb-item .ic{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.sb-cnt{margin-left:auto;background:var(--panel3);color:var(--txt3);border-radius:10px;font-size:10px;padding:1px 7px;font-family:monospace;min-width:24px;text-align:center}
+.sb-cnt.red{background:var(--rbg);color:var(--red)}.sb-cnt.yellow{background:var(--ybg);color:var(--yellow)}.sb-cnt.green{background:var(--gbg);color:var(--green)}
+.main{margin-left:var(--sw);height:100vh;overflow-y:auto;background:radial-gradient(900px 400px at 90% -5%,rgba(249,115,22,.06),transparent 60%),var(--bg)}
+.vh{padding:20px 24px 0;border-bottom:1px solid var(--line);padding-bottom:14px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;background:var(--bg);position:sticky;top:0;z-index:10}
+.vh h1{font-size:20px;font-weight:700}.vh .sub{font-size:12px;color:var(--txt3);margin-top:2px}
+.vb{padding:20px 24px;max-width:1400px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:14px}
+.ch{padding:12px 15px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,.015)}
+.ch h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.ch .hint{font-size:11px;color:var(--txt3)}
+.cb{padding:15px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:13px 15px;position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.kpi.o::after{background:var(--accent)}.kpi.g::after{background:var(--green)}.kpi.r::after{background:var(--red)}.kpi.b::after{background:var(--blue)}.kpi.y::after{background:var(--yellow)}
+.kpi .lbl{font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.kpi .val{font-size:26px;font-weight:700;line-height:1}.kpi .val small{font-size:13px;color:var(--txt2);font-weight:400}
+.kpi .meta{font-size:11px;color:var(--txt2);margin-top:3px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:1000px){.g3{grid-template-columns:1fr 1fr}}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:8px;border:1px solid var(--line2);background:var(--panel2);color:var(--txt);font-size:13px;font-weight:600;cursor:pointer;transition:.12s}
+.btn:hover{border-color:var(--accent);color:var(--a2)}.btn.primary{background:var(--accent);border-color:var(--accent);color:#1a0a00}.btn.primary:hover{background:var(--a2);color:#1a0a00}
+.btn.sm{padding:5px 10px;font-size:12px}.btn.danger{border-color:var(--red);color:var(--red);background:transparent}.btn.danger:hover{background:var(--rbg)}
+.btn.success{border-color:var(--green);color:var(--green);background:transparent}.btn.success:hover{background:var(--gbg)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{text-align:left;padding:9px 11px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--txt3);border-bottom:1px solid var(--line);background:rgba(255,255,255,.02);white-space:nowrap}
+thead th.r{text-align:right}
+tbody td{padding:9px 11px;border-bottom:1px solid var(--line);color:var(--txt2)}
+tbody td.r{text-align:right;font-family:monospace;font-size:12px;color:var(--txt)}
+tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
+.tbl{overflow-x:auto}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.badge.green{background:var(--gbg);color:#4ade80}.badge.yellow{background:var(--ybg);color:#facc15}.badge.red{background:var(--rbg);color:#f87171}
+.badge.blue{background:var(--bbg);color:var(--blue)}.badge.gray{background:var(--panel3);color:var(--txt3)}.badge.orange{background:var(--ad);color:var(--a2)}
+.fg{font-family:monospace;font-weight:700;font-size:13px;color:var(--txt)}
+.plate{font-family:monospace;font-weight:700;font-size:12px;background:#0d2547;color:#bcd6ff;border:1px solid #27457b;padding:2px 8px;border-radius:4px;letter-spacing:.04em;white-space:nowrap}
+.form-g{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px}
+.form-g.g3c{grid-template-columns:1fr 1fr 1fr}
+.fg2{display:flex;flex-direction:column;gap:4px}
+.fg2 label{font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+.full{grid-column:1/-1}
+.fsec{font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.07em;margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.veh-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:9px;margin-top:12px}
+.vc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.12s;display:flex;flex-direction:column;gap:6px}
+.vc:hover{border-color:var(--accent);background:var(--panel2)}
+.vc .pls{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.vc .inf{font-size:11px;color:var(--txt2)}
+.vc .sr2{display:flex;gap:5px;flex-wrap:wrap}
+.si{display:flex;gap:12px;align-items:center}
+.si input{max-width:280px}
+/* ════════════════════════════════════════════════════
+   TRUCK MAP — FUTURISTIC HUD v5
+════════════════════════════════════════════════════ */
+@keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(2000%)}}
+@keyframes ringpulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
+@keyframes unitIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes gridfloat{0%{background-position:0 0,0 0}100%{background-position:34px 34px,34px 34px}}
+@keyframes hubspin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+.map-stage{
+  position:relative;display:flex;justify-content:center;align-items:flex-start;
+  gap:40px;flex-wrap:wrap;padding:34px 26px 28px;border-radius:18px;overflow:hidden;
+  background:
+    linear-gradient(rgba(34,211,238,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(34,211,238,.04) 1px,transparent 1px),
+    radial-gradient(ellipse 70% 90% at 50% -10%,rgba(34,211,238,.10),transparent 60%),
+    radial-gradient(ellipse 60% 80% at 50% 110%,rgba(249,115,22,.08),transparent 60%),
+    linear-gradient(160deg,#05080d 0%,#0a0f17 50%,#070a10 100%);
+  background-size:34px 34px,34px 34px,100% 100%,100% 100%,100% 100%;
+  border:1px solid rgba(34,211,238,.14);
+  box-shadow:inset 0 0 60px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.4);
+  animation:gridfloat 14s linear infinite;
+}
+/* HUD corner brackets */
+.map-stage::before,.map-stage::after{
+  content:'';position:absolute;width:26px;height:26px;pointer-events:none;z-index:5;
+}
+.map-stage::before{top:12px;left:12px;border-top:2px solid rgba(34,211,238,.4);border-left:2px solid rgba(34,211,238,.4)}
+.map-stage::after{bottom:12px;right:12px;border-bottom:2px solid rgba(249,115,22,.4);border-right:2px solid rgba(249,115,22,.4)}
+.hud-scan{
+  position:absolute;left:0;right:0;height:60px;z-index:1;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(34,211,238,.07),transparent);
+  animation:scanline 6s linear infinite;
+}
+
+/* ── UNIT ── */
+.truck-unit{display:flex;flex-direction:column;align-items:center;position:relative;z-index:2;animation:unitIn .5s cubic-bezier(.2,.8,.2,1) both}
+.truck-unit.unit-tractor{animation-delay:.05s}
+.truck-unit.unit-trailer{animation-delay:.18s}
+
+.truck-hud-hdr{display:flex;flex-direction:column;align-items:center;gap:7px;margin-bottom:14px}
+.hud-type{
+  font-size:9px;font-weight:800;letter-spacing:.28em;text-transform:uppercase;
+  color:rgba(34,211,238,.65);text-shadow:0 0 8px rgba(34,211,238,.4);
+  display:flex;align-items:center;gap:7px;
+}
+.hud-type::before,.hud-type::after{content:'';width:18px;height:1px;background:linear-gradient(90deg,transparent,rgba(34,211,238,.5),transparent)}
+.hud-plate{
+  font-family:'Courier New',monospace;font-size:15px;font-weight:700;letter-spacing:.14em;
+  color:#d4e9ff;padding:6px 18px;border-radius:6px;position:relative;
+  background:linear-gradient(135deg,rgba(13,30,58,.9),rgba(8,18,32,.9));
+  border:1px solid rgba(34,211,238,.3);
+  box-shadow:0 0 16px rgba(34,211,238,.18),inset 0 1px 0 rgba(255,255,255,.08);
+  text-shadow:0 0 10px rgba(34,211,238,.3);
+}
+.hud-plate::before,.hud-plate::after{
+  content:'';position:absolute;top:50%;transform:translateY(-50%);
+  width:5px;height:5px;border-radius:50%;background:rgba(34,211,238,.5);box-shadow:0 0 6px rgba(34,211,238,.7);
+}
+.hud-plate::before{left:-3px}.hud-plate::after{right:-3px}
+
+/* ── CHASSIS ── */
+.truck-chassis{
+  position:relative;display:flex;flex-direction:column;align-items:center;
+  padding:0 0 14px;border-radius:16px;
+  background:linear-gradient(180deg,rgba(18,26,40,.7),rgba(10,15,24,.85));
+  border:1px solid rgba(34,211,238,.12);
+  box-shadow:0 12px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.04);
+  backdrop-filter:blur(2px);
+}
+
+/* ── FRAME RAILS ── */
+.tframe{position:relative;display:flex;flex-direction:column;gap:14px;padding:14px 22px;width:100%}
+.tframe::before,.tframe::after{
+  content:'';position:absolute;top:8px;bottom:8px;width:5px;border-radius:3px;
+  background:linear-gradient(180deg,rgba(34,211,238,.25),rgba(34,211,238,.45),rgba(34,211,238,.25));
+  box-shadow:0 0 10px rgba(34,211,238,.3);
+}
+.tframe::before{left:8px}.tframe::after{right:8px}
+
+/* ── AXLE ROW ── */
+.taxle{display:flex;align-items:flex-start;justify-content:center;gap:0;position:relative;padding:4px 0 2px}
+.wpair{display:flex;gap:7px;align-items:center;z-index:2}
+.taxle-beam{
+  flex:1;min-width:30px;max-width:60px;height:8px;margin:0 6px 18px;border-radius:4px;position:relative;
+  background:linear-gradient(90deg,rgba(34,211,238,.15),rgba(34,211,238,.4),rgba(34,211,238,.15));
+  box-shadow:0 0 8px rgba(34,211,238,.25),inset 0 1px 0 rgba(255,255,255,.15);
+}
+.taxle-lbl{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:6px;font-weight:800;letter-spacing:.1em;color:rgba(34,211,238,.55);white-space:nowrap;
+  background:rgba(5,8,13,.7);padding:1px 3px;border-radius:3px;
+}
+
+/* ════════════════════════════════
+   THE WHEEL — Detailed Alloy
+════════════════════════════════ */
+.wheel-slot{
+  width:58px;height:58px;border-radius:50%;flex-shrink:0;position:relative;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  border:1.5px dashed rgba(34,211,238,.18);background:rgba(34,211,238,.02);
+  transition:all .16s ease;margin-bottom:18px;
+}
+.wheel-slot.spare-slot{width:62px;height:62px}
+.wheel-slot.slot-over{border-color:var(--accent);background:rgba(249,115,22,.12);transform:scale(1.08);box-shadow:0 0 16px rgba(249,115,22,.3)}
+.wheel-slot .empty-lbl{font-size:7px;color:rgba(34,211,238,.3);font-family:monospace;text-align:center;line-height:1.25;font-weight:600}
+
+.wheel{
+  width:56px;height:56px;cursor:grab;position:relative;flex-shrink:0;
+  transition:transform .18s cubic-bezier(.2,.8,.2,1),filter .18s;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,.6));
+}
+.wheel-slot.spare-slot .wheel{width:60px;height:60px}
+.wheel:hover{transform:scale(1.18) translateY(-2px);filter:drop-shadow(0 8px 18px rgba(0,0,0,.7)) brightness(1.18);z-index:20}
+.wheel.dragging{opacity:.35;transform:scale(.85)}
+.wheel svg{display:block;width:100%;height:100%;overflow:visible}
+.wheel .fogo-tag{
+  position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);
+  font-family:'Courier New',monospace;font-size:8px;font-weight:700;
+  color:#d4e9ff;background:rgba(5,8,13,.9);padding:1px 5px;border-radius:4px 4px 0 0;
+  border:1px solid rgba(34,211,238,.25);border-bottom:none;white-space:nowrap;letter-spacing:.04em;
+  box-shadow:0 1px 4px rgba(0,0,0,.5);pointer-events:none;z-index:2;
+}
+.wheel .km-tag{
+  position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);
+  font-family:'Courier New',monospace;font-size:7px;font-weight:700;
+  color:#fb923c;background:rgba(5,8,13,.9);padding:1px 5px;border-radius:0 0 4px 4px;
+  border:1px solid rgba(249,115,22,.3);border-top:none;white-space:nowrap;letter-spacing:.02em;
+  box-shadow:0 2px 5px rgba(0,0,0,.5);pointer-events:none;z-index:1;
+}
+.wheel.w-r svg .glowring{animation:ringpulse 1.5s ease-in-out infinite;transform-origin:center}
+.wheel.w-r .hubcap{animation:hubspin 8s linear infinite;transform-origin:center}
+
+/* ── CAB SVG ── */
+.tcab{width:148px;margin:0 auto;display:block;filter:drop-shadow(0 0 12px rgba(34,211,238,.12))}
+.tkingpin{margin:10px auto 4px;width:34px;height:34px;display:block}
+
+/* ── SPARE ZONE ── */
+.spare-zone{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:10px;padding:10px 18px 4px;width:100%;border-top:1px solid rgba(34,211,238,.08)}
+.spare-label{font-size:8px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(34,211,238,.4)}
+
+/* ── CONNECTOR ── */
+.tconn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;align-self:center;margin-top:30px;opacity:.7;z-index:2}
+.tconn .cline{width:2px;height:32px;background:linear-gradient(180deg,transparent,rgba(249,115,22,.7),transparent)}
+.tconn .clbl{font-size:9px;font-weight:800;letter-spacing:.1em;color:rgba(249,115,22,.7);text-shadow:0 0 8px rgba(249,115,22,.4)}
+
+/* ── LEGEND ── */
+.map-legend-new{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid rgba(34,211,238,.08);font-size:11px}
+.map-legend-new span{display:flex;align-items:center;gap:7px;color:rgba(212,233,255,.5);font-weight:500}
+.leg-dot{width:9px;height:9px;border-radius:50%;box-shadow:0 0 8px currentColor}
+.leg-dot.g{background:#22c55e;color:#22c55e}.leg-dot.y{background:#eab308;color:#eab308}.leg-dot.r{background:#ef4444;color:#ef4444}
+
+/* ── STOCK PANEL ── */
+.stk-panel{padding:14px;max-height:480px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:10px}
+.st{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:grab;padding:7px 3px;border-radius:9px;transition:.15s;border:1px solid transparent}
+.st:hover{background:rgba(34,211,238,.05);border-color:rgba(34,211,238,.12)}
+.st .mini2{width:38px;height:38px;position:relative;filter:drop-shadow(0 2px 5px rgba(0,0,0,.5))}
+.st .mini2 svg{width:100%;height:100%;display:block}
+.st .slb{font-family:monospace;font-size:8px;color:rgba(200,220,255,.55);font-weight:700;letter-spacing:.03em}
+
+/* ── DROP ZONES ── */
+.dz-row{display:flex;gap:8px;padding:8px 14px 14px}
+.dz{flex:1;text-align:center;padding:11px 4px;border:1.5px dashed rgba(34,211,238,.16);border-radius:10px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(212,233,255,.35);transition:.15s;cursor:default}
+.dz:hover,.dz.over{border-color:var(--accent);background:rgba(249,115,22,.1);color:var(--a2);box-shadow:0 0 14px rgba(249,115,22,.2)}
+.dz.dz-r:hover,.dz.dz-r.over{border-color:var(--blue);background:rgba(56,189,248,.1);color:var(--blue);box-shadow:0 0 14px rgba(56,189,248,.2)}
+.dz.dz-s:hover,.dz.dz-s.over{border-color:var(--red);background:rgba(239,68,68,.1);color:var(--red);box-shadow:0 0 14px rgba(239,68,68,.2)}
+
+.chart-wrap{position:relative;height:260px;width:100%}
+.chart-wrap.tall{height:340px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.tab-btn{padding:8px 14px;font-size:13px;font-weight:600;color:var(--txt3);border-bottom:2px solid transparent;cursor:pointer;transition:.12s;margin-bottom:-1px}
+.tab-btn:hover{color:var(--txt)}.tab-btn.active{color:var(--a2);border-bottom-color:var(--accent)}
+.drawer-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);z-index:50;opacity:0;pointer-events:none;transition:.2s}
+.drawer-bg.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;right:0;top:0;height:100%;width:420px;max-width:95vw;background:var(--panel);border-left:1px solid var(--line2);box-shadow:-8px 0 32px rgba(0,0,0,.4);z-index:51;transform:translateX(100%);transition:.25s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
+.drawer.open{transform:translateX(0)}
+.drh{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.drb{padding:15px 17px;overflow-y:auto;flex:1}
+.xb{background:var(--panel2);border:1px solid var(--line2);color:var(--txt2);width:30px;height:30px;border-radius:7px;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center}
+.xb:hover{border-color:var(--red);color:var(--red)}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.fgrid .fc{background:var(--panel);padding:8px 11px}.fgrid .fc.full{grid-column:1/3}
+.fgrid .fc .k{font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+.fgrid .fc .v{font-size:13px;font-weight:600;color:var(--txt)}
+.wb{height:8px;border-radius:4px;background:var(--bg);border:1px solid var(--line);overflow:hidden;margin:7px 0}
+.wb i{display:block;height:100%;border-radius:4px;transition:width .4s}
+.al-item{display:flex;align-items:center;gap:10px;padding:11px 13px;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer}
+.al-item:hover{background:var(--panel2)}.al-item:last-child{border-bottom:none}
+.al-ic{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.al-ic.red{background:var(--rbg)}.al-ic.yellow{background:var(--ybg)}.al-ic.blue{background:var(--bbg)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(12px);z-index:100;background:var(--panel3);border:1px solid var(--line2);border-radius:9px;padding:10px 16px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;transition:.22s;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast .tic{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.empty{padding:40px 20px;text-align:center;color:var(--txt3)}
+.empty .eic{font-size:36px;margin-bottom:10px}
+.empty .etxt{font-size:14px;color:var(--txt2);margin-bottom:5px}
+.back{display:inline-flex;align-items:center;gap:5px;color:var(--txt3);font-size:13px;cursor:pointer;padding:5px 0;margin-bottom:12px}
+.back:hover{color:var(--a2)}
+.km-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:60;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:.2s}
+.km-modal.open{opacity:1;pointer-events:auto}
+.km-box{background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:24px;width:380px;max-width:95vw}
+.km-box h3{font-size:16px;font-weight:700;margin-bottom:16px}
+.km-box .hint{font-size:11px;color:var(--txt3);margin-top:4px}
+
+/* ══════════ LOGIN ══════════ */
+#login-screen{
+  position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 0%,rgba(34,211,238,.10),transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 100%,rgba(249,115,22,.08),transparent 60%),
+    linear-gradient(160deg,#05080d 0%,#0a0f17 50%,#070a10 100%);
+}
+#login-screen.hide{display:none}
+.login-box{
+  width:340px;padding:36px 32px;border-radius:18px;position:relative;
+  background:linear-gradient(180deg,rgba(18,26,40,.85),rgba(10,15,24,.92));
+  border:1px solid rgba(34,211,238,.16);
+  box-shadow:0 20px 60px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);
+  backdrop-filter:blur(4px);
+}
+.login-mark{font-size:38px;text-align:center;margin-bottom:6px;filter:drop-shadow(0 0 12px rgba(34,211,238,.4))}
+.login-title{text-align:center;font-size:19px;font-weight:800;color:var(--txt);letter-spacing:.02em}
+.login-sub{text-align:center;font-size:12px;color:var(--txt3);margin-top:3px;margin-bottom:26px}
+.login-users{display:flex;gap:8px;margin-bottom:16px}
+.login-user-btn{
+  flex:1;padding:10px 4px;border-radius:10px;border:1px solid var(--bd);background:var(--bg2);
+  color:var(--txt2);font-size:12px;font-weight:700;cursor:pointer;transition:.15s;text-align:center;
+}
+.login-user-btn:hover{border-color:rgba(34,211,238,.4);color:var(--txt)}
+.login-user-btn.active{border-color:var(--blue);background:rgba(34,211,238,.1);color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
+.login-fg{margin-bottom:14px}
+.login-fg label{display:block;font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.login-fg input{
+  width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--bd);
+  background:var(--bg);color:var(--txt);font-size:14px;
+}
+.login-fg input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(34,211,238,.12)}
+.login-btn{
+  width:100%;padding:12px;border-radius:10px;border:none;margin-top:6px;
+  background:linear-gradient(135deg,var(--blue),#0e9fc4);color:#06121f;font-weight:800;font-size:14px;
+  cursor:pointer;transition:.15s;
+}
+.login-btn:hover{filter:brightness(1.1)}
+.login-err{color:var(--red);font-size:12px;text-align:center;margin-top:10px;min-height:16px}
+#app-root.hide{display:none}
+.sb-user{
+  display:flex;align-items:center;gap:9px;padding:11px 16px;margin-top:auto;
+  border-top:1px solid var(--bd);font-size:12px;color:var(--txt2);
+}
+.sb-user .av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--accent));
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#06121f;flex-shrink:0}
+.sb-user .nm{flex:1;font-weight:700;color:var(--txt)}
+.sb-user .lo{cursor:pointer;color:var(--txt3);font-size:11px;text-decoration:underline;white-space:nowrap}
+.sb-user .lo:hover{color:var(--red)}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-mark">🚛</div>
+    <div class="login-title">Transccema</div>
+    <div class="login-sub">Gestão de Pneus — faça login</div>
+    <div class="login-users" id="login-users"></div>
+    <form id="login-form" onsubmit="return doLogin(event)">
+      <div class="login-fg">
+        <label>Senha</label>
+        <input type="password" id="login-pass" placeholder="Digite a senha" autocomplete="off">
+      </div>
+      <button type="submit" class="login-btn">Entrar</button>
+      <div class="login-err" id="login-err"></div>
+    </form>
+  </div>
+</div>
+
+<div id="app-root" class="hide">
+<nav class="sidebar" id="sidebar">
+  <div class="sb-brand">
+    <div class="sb-mark">🚛</div>
+    <div><div class="sb-title">Pneus</div><div class="sb-sub">Transccema</div></div>
+  </div>
+  <div class="sb-sec">Operação</div>
+  <div class="sb-item" id="sb-home"><span class="ic">🏠</span> Dashboard</div>
+  <div class="sb-item" id="sb-frota"><span class="ic">🚛</span> Frota <span class="sb-cnt" id="cnt-frota">0</span></div>
+  <div class="sb-item" id="sb-almox"><span class="ic">📦</span> Almoxarifado <span class="sb-cnt" id="cnt-almox">0</span></div>
+  <div class="sb-item" id="sb-reforma"><span class="ic">🔧</span> Reformas <span class="sb-cnt" id="cnt-reforma">0</span></div>
+  <div class="sb-item" id="sb-sucata"><span class="ic">🗑️</span> Sucata <span class="sb-cnt" id="cnt-sucata">0</span></div>
+  <div class="sb-item" id="sb-estoque"><span class="ic">📊</span> Estoque <span class="sb-cnt green" id="cnt-estoque">0</span></div>
+  <div class="sb-item" id="sb-engate"><span class="ic">🔗</span> Engates/Pares</div>
+  <div class="sb-item" id="sb-km"><span class="ic">📏</span> Lançar KM (lote)</div>
+  <div class="sb-item" id="sb-alocar"><span class="ic">📍</span> Alocar Pneus <span class="sb-cnt" id="cnt-alocar">0</span></div>
+  <div class="sb-sec">Cadastro</div>
+  <div class="sb-item" id="sb-cadastro"><span class="ic">➕</span> Novo Pneu</div>
+  <div class="sb-item" id="sb-lote"><span class="ic">📥</span> Adicionar Pneus (lote)</div>
+  <div class="sb-item" id="sb-semfogo"><span class="ic">🏷️</span> Pneus Sem Fogo <span class="sb-cnt" id="cnt-semfogo">0</span></div>
+  <div class="sb-item" id="sb-todos"><span class="ic">📋</span> Todos os Pneus <span class="sb-cnt" id="cnt-total">0</span></div>
+  <div class="sb-sec">Relatórios</div>
+  <div class="sb-item" id="sb-rel-mov"><span class="ic">📄</span> Movimentações</div>
+  <div class="sb-item" id="sb-rel-vida"><span class="ic">📈</span> Projeção de Vida</div>
+  <div class="sb-item" id="sb-rel-fab"><span class="ic">🏭</span> Custo Fabricantes</div>
+  <div class="sb-item" id="sb-rel-modelo"><span class="ic">🔎</span> Por Fabricante/Modelo</div>
+  <div class="sb-item" id="sb-rel-cpk"><span class="ic">💰</span> Custo por Pneu</div>
+  <div class="sb-item" id="sb-rel-almox-rep"><span class="ic">🏪</span> Pneus Almoxarifado</div>
+  <div class="sb-item" id="sb-rel-veh"><span class="ic">🚛</span> Pneus por Veículo</div>
+  <div class="sb-item" id="sb-rel-suc"><span class="ic">♻️</span> Pneus Sucateados</div>
+  <div class="sb-sec">Indicadores</div>
+  <div class="sb-item" id="sb-bi-suc"><span class="ic">📉</span> B.I. Sucateamento</div>
+  <div class="sb-item" id="sb-bi-pneu"><span class="ic">🔵</span> B.I. Pneus</div>
+  <div class="sb-item" id="sb-bi-alertas"><span class="ic">⚠️</span> Alertas <span class="sb-cnt red" id="cnt-alertas">0</span></div>
+  <div class="sb-item" id="sb-trocas"><span class="ic">📅</span> Trocas por Período</div>
+  <div class="sb-sec">Dados</div>
+  <div class="sb-item" id="sb-backup"><span class="ic">💾</span> Backup/Restaurar</div>
+  <div class="sb-user" id="sb-user-box">
+    <div class="av" id="sb-user-av">?</div>
+    <div class="nm" id="sb-user-nm">—</div>
+    <div class="lo" onclick="doLogout()">Sair</div>
+  </div>
+</nav>
+
+<div class="main" id="main"></div>
+
+<div class="drawer-bg" id="dbg"></div>
+<aside class="drawer" id="drawer"><div class="drh" id="drh"></div><div class="drb" id="drb"></div></aside>
+
+<div class="km-modal" id="km-modal">
+  <div class="km-box">
+    <h3 id="km-title">Atualizar Hodômetro</h3>
+    <div style="margin-bottom:12px">
+      <div class="fg2"><label>Hodômetro atual (km)</label><input type="number" id="km-input" min="0" step="1" placeholder="ex: 531153"></div>
+      <div class="hint" id="km-hint"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn primary" style="flex:1;justify-content:center" onclick="saveKm()">Salvar</button>
+      <button class="btn" onclick="closeKm()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="km-modal" id="aloc-modal">
+  <div class="km-box">
+    <h3 id="aloc-title">Alocar pneu</h3>
+    <div class="hint" id="aloc-info" style="margin-bottom:12px"></div>
+    <div class="fg2"><label>Veículo e posição</label>
+      <select id="aloc-select" style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-size:14px"></select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn primary" style="flex:1;justify-content:center;background:var(--green);color:#fff" onclick="confirmarAlocar()">Confirmar montagem</button>
+      <button class="btn" onclick="fecharAlocar()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="km-modal" id="fogo-modal">
+  <div class="km-box">
+    <h3>🏷️ Atribuir número de fogo</h3>
+    <div class="hint" id="fogo-info" style="margin-bottom:12px"></div>
+    <div class="fg2"><label>Número de fogo real</label>
+      <input id="fogo-input" placeholder="ex: 1731" style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-size:14px;font-family:monospace">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn primary" style="flex:1;justify-content:center;background:var(--green);color:#fff" onclick="confirmarAtribuirFogo()">Confirmar</button>
+      <button class="btn" onclick="fecharAtribuirFogo()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="tic" id="tic"></span><span id="tmsg"></span></div>
+
+<script>
+// ============================
+//  REFERENCE DATA
+// ============================
+let PARES_DEFAULT=[]; // populado de verdade pelo load() a partir da planilha (Frota) — nunca mais fixo no código
+
+const FABS=['GOODYEAR','BRIDGESTONE','MICHELIN','PIRELLI','DUNLOP','CONTINENTAL','FIRESTONE','WESTLAKE','HANKOOK','ADVANCE'];
+const MODS_FAB={'GOODYEAR':['KMAX D','KMAX S','KMAX RSA','G359'],'BRIDGESTONE':['R269','R249','M736','M745','M792','VT 120L'],'MICHELIN':['X MULTI D','X MULTI Z','KMAX S','KMAX D'],'PIRELLI':['FR01','FR88','H88'],'DUNLOP':['SP320','SP835'],'CONTINENTAL':['Conti EcoPlus HD3'],'WESTLAKE':['CR976A','AD528'],'FIRESTONE':['FS820']};
+const DIMS=['295/80R22,5','275/80R22,5','315/80R22,5','275/70R22,5'];
+const VIDAS=['Pneu Novo (1º Vida)','1º Recape (2º Vida)','2º Recape (3º Vida)','3º Recape (4º Vida)'];
+const TIPOS_AQ=['Pneus Novos - Reposição','Pneus Novos - Novos Veículos','Recape'];
+const ALMOXS=['TRANSCCEMA -BA','TRANSCCEMA- SP','PNEUS'];
+const POS_CAV=[{a:1,l:['1DEE'],r:['1DDE']},{a:2,l:['2TEE','2TEI'],r:['2TDI','2TDE']}];
+const POS_CARR=[{a:1,l:['1LEE','1LEI'],r:['1LDI','1LDE']},{a:2,l:['2LEE','2LEI'],r:['2LDI','2LDE']},{a:3,l:['3LEE','3LEI'],r:['3LDI','3LDE']}];
+const POS_LBL={'1DEE':'Dir.Esq.','1DDE':'Dir.Dir.','2TEE':'Tra.E.Ext','2TEI':'Tra.E.Int','2TDI':'Tra.D.Int','2TDE':'Tra.D.Ext','1LEE':'E1.E.Ext','1LEI':'E1.E.Int','1LDI':'E1.D.Int','1LDE':'E1.D.Ext','2LEE':'E2.E.Ext','2LEI':'E2.E.Int','2LDI':'E2.D.Int','2LDE':'E2.D.Ext','3LEE':'E3.E.Ext','3LEI':'E3.E.Int','3LDI':'E3.D.Int','3LDE':'E3.D.Ext','Estepe':'Estepe'};
+const CARR_POS=['1LEE','1LEI','1LDI','1LDE','2LEE','2LEI','2LDI','2LDE','3LEE','3LEI','3LDI','3LDE','Estepe'];
+
+// ============================
+//  DATA LAYER
+// ============================
+let P=[], MV=[], CFG={pairs:{},hodos:{}};
+const SK_P='tcm9_p', SK_M='tcm9_m', SK_C='tcm9_c', SK_V='tcm9_v';
+function save(){/* agora os dados vivem na planilha — cada mutação chama syncPneu/syncHodometro diretamente */}
+
+// ============================
+//  LOGIN
+// ============================
+const USERS={
+  'felipe':{pass:'felipe',nome:'Felipe',ini:'F'},
+  'willians':{pass:'willians',nome:'Willians',ini:'W'},
+  'celso':{pass:'celso',nome:'Celso',ini:'C'}
+};
+const SK_USER='tcm_user';
+let LOGIN_SEL=null;
+
+function renderLoginUsers(){
+  const box=document.getElementById('login-users');
+  box.innerHTML=Object.keys(USERS).map(k=>
+    `<div class="login-user-btn" id="lu-${k}" onclick="selLoginUser('${k}')">${USERS[k].nome}</div>`
+  ).join('');
+}
+function selLoginUser(k){
+  LOGIN_SEL=k;
+  document.querySelectorAll('.login-user-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('lu-'+k).classList.add('active');
+  document.getElementById('login-err').textContent='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-pass').focus();
+}
+async function doLogin(e){
+  e.preventDefault();
+  const errEl=document.getElementById('login-err');
+  if(!LOGIN_SEL){ errEl.textContent='Selecione seu nome'; return false; }
+  const pass=document.getElementById('login-pass').value;
+  const btn=e.target.querySelector('button[type=submit]');
+  if(btn){ btn.disabled=true; btn.textContent='Entrando...'; }
+  let r;
+  try{ r = await apiPost('login', { usuario: LOGIN_SEL, senha: pass }); }
+  catch(err){ r = { ok:false, erro:'Sem conexão com o servidor' }; }
+  if(btn){ btn.disabled=false; btn.textContent='Entrar'; }
+  if(!r.ok){
+    errEl.textContent = r.erro || 'Senha incorreta';
+    document.getElementById('login-pass').value='';
+    document.getElementById('login-pass').focus();
+    return false;
+  }
+  localStorage.setItem(SK_USER,LOGIN_SEL);
+  showApp();
+  return false;
+}
+function doLogout(){
+  localStorage.removeItem(SK_USER);
+  location.reload();
+}
+function currentUserName(){
+  const k=localStorage.getItem(SK_USER);
+  return k&&USERS[k]?USERS[k].nome:'—';
+}
+async function showApp(){
+  const k=localStorage.getItem(SK_USER);
+  if(!k||!USERS[k]){
+    document.getElementById('login-screen').classList.remove('hide');
+    document.getElementById('app-root').classList.add('hide');
+    renderLoginUsers();
+    return;
+  }
+  document.getElementById('login-screen').classList.add('hide');
+  document.getElementById('app-root').classList.remove('hide');
+  const u=USERS[k];
+  document.getElementById('sb-user-av').textContent=u.ini;
+  document.getElementById('sb-user-nm').textContent=u.nome;
+  document.getElementById('app-root').innerHTML_loading = true;
+  toast('Carregando dados da planilha...', '#38bdf8');
+  await load();
+  renderSidebar();
+  nav('home');
+  startPolling();
+}
+
+
+// ============================
+//  BACKEND (Google Apps Script)
+// ============================
+const API_URL = 'https://script.google.com/macros/s/AKfycbyxNjCT1UmURFcqaEl29rpRBkmrEIdAqh_E5zs-VOYXcpKwAP0BUMspE-I4FkmPduM0/exec';
+let SYNCING = false;
+let PENDING_WRITES = 0; // conta gravações em andamento — o polling espera zerar antes de atualizar a tela
+
+async function apiGet(action){
+  // cache:'no-store' + timestamp único na URL — sem isso, o navegador (ou o proxy da
+  // rede/tablet) pode devolver uma resposta antiga guardada em cache por alguns
+  // segundos, fazendo a tela "voltar" pro estado anterior mesmo com o servidor já
+  // tendo a informação certa.
+  const url = API_URL + '?action=' + encodeURIComponent(action) + '&_ts=' + Date.now();
+  const r = await fetch(url, { cache: 'no-store' });
+  return await r.json();
+}
+async function apiPost(action, payload){
+  const r = await fetch(API_URL, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS no Apps Script
+    body: JSON.stringify(Object.assign({ action: action }, payload))
+  });
+  return await r.json();
+}
+
+// Converte o pneu do formato do app pro formato de 12 colunas da planilha
+function pneuParaSheet_(p){
+  return {
+    fogo: p.fogo, fabricante: p.fabricante||'', modelo: p.modelo||'', dot: p.dot||'',
+    vida: p.vida||'', valorU: p.valorU||0, status: p.status||'almox',
+    cavalo: p.status==='veiculo'?(p.cavalo||''):'', carreta: p.status==='veiculo'?(p.carreta||''):'',
+    posicao: p.status==='veiculo'?(p.posicao||''):'', sulcoMenor: p.sulcoMenor||0, kmVida: p.kmVida||0
+  };
+}
+
+// Envia um pneu pro backend (cria ou atualiza pelo fogo) — chamar após QUALQUER mudança num pneu
+async function syncPneu(p, tipoLabel){
+  PENDING_WRITES++;
+  try{
+    const r = await apiPost('upsertPneu', { pneu: pneuParaSheet_(p), usuario: currentUserName() });
+    if(!r.ok){ toast('⚠️ '+(r.erro||'Falha ao sincronizar'), '#ef4444'); await refreshFromServer(); }
+    return r;
+  }catch(e){ toast('⚠️ Sem conexão com o servidor — tente novamente', '#ef4444'); return {ok:false}; }
+  finally{ PENDING_WRITES--; }
+}
+
+async function syncHodometro(cavalo, km){
+  PENDING_WRITES++;
+  try{
+    const r = await apiPost('updateHodometro', { cavalo: cavalo, km: km, usuario: currentUserName() });
+    if(!r.ok){ toast('⚠️ '+(r.erro||'Falha ao atualizar hodômetro'), '#ef4444'); await refreshFromServer(); }
+    return r;
+  }catch(e){ toast('⚠️ Sem conexão com o servidor', '#ef4444'); return {ok:false}; }
+  finally{ PENDING_WRITES--; }
+}
+
+async function syncDeletePneu(fogo){
+  PENDING_WRITES++;
+  try{
+    const r = await apiPost('deletarPneu', { fogo: fogo, usuario: currentUserName() });
+    if(!r.ok){ toast('⚠️ '+(r.erro||'Falha ao excluir'), '#ef4444'); }
+    return r;
+  }catch(e){ toast('⚠️ Sem conexão com o servidor', '#ef4444'); return {ok:false}; }
+  finally{ PENDING_WRITES--; }
+}
+
+async function syncAddPar(cavalo, carreta){
+  PENDING_WRITES++;
+  try{ return await apiPost('addPar', { cavalo: cavalo, carreta: carreta || '' }); }
+  catch(e){ return {ok:false}; }
+  finally{ PENDING_WRITES--; }
+}
+
+// Carrega tudo da planilha e popula o estado local (P, CFG, MV)
+async function load(){
+  const data = await apiGet('data');
+  if(!data.ok){ toast('Erro ao carregar dados: '+(data.erro||''), '#ef4444'); P=[];MV=[];CFG={pairs:{},hodos:{}}; return; }
+
+  P = (data.pneus||[]).map(function(p){
+    return {
+      id: p.fogo, fogo: String(p.fogo), fabricante: p.fabricante||'', modelo: p.modelo||'', dot: p.dot||'',
+      vida: p.vida||'', valorU: Number(p.valorU)||0, valorTotal: Number(p.valorU)||0,
+      status: p.status||'almox', cavalo: p.cavalo||null, carreta: p.carreta||null, posicao: p.posicao||null,
+      sulcoMenor: Number(p.sulcoMenor)||0, sulcos:[Number(p.sulcoMenor)||0,Number(p.sulcoMenor)||0,Number(p.sulcoMenor)||0,Number(p.sulcoMenor)||0],
+      kmVida: Number(p.kmVida)||0, kmTotal: Number(p.kmVida)||0, kmInst:0,
+      almoxarifado:'PNEUS', fornecedor:'', numDoc:'', dataEmissao:'', dimensao:'295/80R22,5', bandaRodagem:''
+    };
+  });
+
+  CFG = { pairs:{}, hodos:{} };
+  (data.frota||[]).forEach(function(f){ CFG.pairs[f.cavalo] = f.carreta || ''; CFG.hodos[f.cavalo] = Number(f.hodometro)||0; });
+
+  MV = (data.movimentacoes||[]).map(function(m){
+    return { data: m.data, fogo: m.fogo, tipo: m.tipo, cavalo: m.cavalo, carreta: m.carreta, posicao: m.posicao, sulco: m.sulco, km: m.km, usuario: m.usuario };
+  });
+
+  PARES_DEFAULT = Object.keys(CFG.pairs).map(function(c){ return [c, CFG.pairs[c]]; });
+}
+
+// Re-sincroniza com o servidor sem perder a tela atual (usado no polling e após erros)
+async function refreshFromServer(){
+  if(SYNCING) return;
+  SYNCING = true;
+  try{
+    const view = VIEW, params = VP;
+    await load();
+    if(document.getElementById('app-root') && !document.getElementById('app-root').classList.contains('hide')){
+      renderSidebar(); nav(view, params);
+    }
+  } finally { SYNCING = false; }
+}
+
+// Atualização "quase tempo-real": repuxa a planilha a cada 20s
+function startPolling(){
+  setInterval(function(){
+    // não atualiza por baixo do usuário se ele estiver preenchendo um formulário
+    if(VIEW==='cadastro') return;
+    // não atualiza enquanto alguma gravação ainda está em andamento (evita
+    // buscar a planilha antes da mudança do próprio usuário ter sido salva)
+    if(PENDING_WRITES>0) return;
+    refreshFromServer();
+  }, 20000);
+}
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function td(){return new Date().toISOString().slice(0,10);}
+function fd(d){if(!d)return'—';const[y,m,dd]=(d||'').split('-');return dd?`${dd}/${m}/${y}`:d;}
+function fkm(n){return Math.round(n||0).toLocaleString('pt-BR')+' km';}
+function fr(n){return 'R$ '+(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function sst(mm){return mm>6?'sg':(mm>=3?'sy':'sr');}
+function stxt(mm){return mm>6?'Bom':(mm>=3?'Atenção':'Crítico');}
+function sbadge(mm){const c=sst(mm)==='sg'?'green':(sst(mm)==='sy'?'yellow':'red');return`<span class="badge ${c}">${mm}mm · ${stxt(mm)}</span>`;}
+function cpk(p){return p.kmVida>0?(p.valorU||0)/p.kmVida:0;}
+function getPneu(f){return P.find(x=>x.fogo===f);}
+
+function isSemFogo(p){ return !!(p && p.fogo && p.fogo.startsWith('PROV-')); }
+
+function proximoFogoProvisorio(){
+  const usados = P.filter(p=>isSemFogo(p)).map(p=>parseInt(p.fogo.replace('PROV-',''),10)).filter(n=>!isNaN(n));
+  const proximo = (usados.length?Math.max(...usados):0)+1;
+  return 'PROV-'+String(proximo).padStart(4,'0');
+}
+// KM cavalo → carreta parceira herda o hodômetro do cavalo
+function getHodoCarreta(carreta){
+  const par=Object.entries(CFG.pairs).find(([c,t])=>t===carreta);
+  if(par) return CFG.hodos[par[0]]||0;
+  return 0;
+}
+function getKmPneu(p){
+  if(!p) return 0;
+  // Se tem KM real do relatório CPK, usa direto
+  if(p.status!=='veiculo') return p.kmVida||0;
+  const hodo=CFG.hodos[p.cavalo]||getHodoCarreta(p.carreta)||0;
+  const inst=p.kmInst||0;
+  return (p.kmVida||0)+Math.max(0,hodo-inst);
+}
+function addM(fogo,tipo,cav,carr,pos,sulco,km){MV.push({id:uid(),data:td(),fogo,tipo,cavalo:cav||'',carreta:carr||'',posicao:pos||'',sulco:sulco||0,km:km||0,usuario:currentUserName()});}
+
+// ============================
+//  SEED — dados reais PDF 1 + PDF 2
+// ============================
+
+
+
+// ============================
+//  STATE & NAVIGATION
+// ============================
+let ALOCQ="",ALOC_FOGO=null;
+let KMQ="";
+let VIEW='home', VP={}, KM_CAV=null;
+let mDrag=null, sTab='almox', MAP_IDX=null;
+
+function nav(v,p={}){VIEW=v;VP=p;renderSidebar();renderMain();}
+function renderSidebar(){
+  document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
+  const el=document.getElementById('sb-'+VIEW);
+  if(el) el.classList.add('active');
+  // update counts
+  const almx=P.filter(p=>p.status==='almox').length;
+  const ref=P.filter(p=>p.status==='reforma').length;
+  const suc=P.filter(p=>p.status==='sucata').length;
+  const total=P.length;
+  const crit=P.filter(p=>p.status==='veiculo'&&p.sulcoMenor<3).length;
+  document.getElementById('cnt-almox').textContent=almx;
+  document.getElementById('cnt-reforma').textContent=ref;
+  document.getElementById('cnt-sucata').textContent=suc;
+  document.getElementById('cnt-total').textContent=total;
+  document.getElementById('cnt-frota').textContent=PARES_DEFAULT.length;
+  document.getElementById('cnt-estoque').textContent=almx+ref;
+  const acEl=document.getElementById('cnt-alocar'); if(acEl) acEl.textContent=almx;
+  const sfEl=document.getElementById('cnt-semfogo'); if(sfEl){ const nsf=P.filter(isSemFogo).length; sfEl.textContent=nsf; sfEl.className='sb-cnt'+(nsf>0?' yellow':''); }
+  const ac=document.getElementById('cnt-alertas');
+  ac.textContent=crit;
+  ac.className='sb-cnt'+(crit>0?' red':crit>0?' yellow':'');
+}
+
+function renderMain(){
+  const mc=document.getElementById('main');
+  if(!mc) return;
+  try{
+    if(VIEW==='home') renderHome(mc);
+    else if(VIEW==='frota') renderFrota(mc);
+    else if(VIEW==='frota-map') renderFrotaMap(mc,VP.idx||0);
+    else if(VIEW==='almox') renderList(mc,'almox','📦 Almoxarifado','Pneus disponíveis em estoque');
+    else if(VIEW==='reforma') renderList(mc,'reforma','🔧 Reformas','Pneus em recapagem');
+    else if(VIEW==='sucata') renderList(mc,'sucata','🗑️ Sucata','Pneus descartados');
+    else if(VIEW==='todos') renderList(mc,'all','📋 Todos os Pneus','Cadastro completo');
+    else if(VIEW==='estoque') renderEstoque(mc);
+    else if(VIEW==='engate') renderEngate(mc);
+    else if(VIEW==='km-lote') renderKmLote(mc);
+    else if(VIEW==='alocar') renderAlocar(mc);
+    else if(VIEW==='cadastro') renderCadastro(mc);
+    else if(VIEW==='add-lote') renderAddLote(mc);
+    else if(VIEW==='sem-fogo') renderSemFogo(mc);
+    else if(VIEW==='trocas-periodo') renderTrocasPeriodo(mc);
+    else if(VIEW==='rel-modelo') renderRelModelo(mc);
+    else if(VIEW==='edit') renderCadastro(mc,VP.fogo);
+    else if(VIEW==='backup') renderBackup(mc);
+    else if(VIEW.startsWith('rel-')) renderRel(mc,VIEW.replace('rel-',''));
+    else if(VIEW.startsWith('bi-')) renderBI(mc,VIEW.replace('bi-',''));
+    else mc.innerHTML='<div class="vb"><div class="empty"><div class="eic">🚧</div></div></div>';
+  }catch(e){mc.innerHTML=`<div class="vb"><div class="empty"><div class="eic">⚠️</div><div class="etxt">Erro: ${e.message}</div></div></div>`;console.error(e);}
+  mc.scrollTop=0;
+}
+
+// ============================
+//  DASHBOARD
+// ============================
+function renderHome(mc){
+  const total=P.length, emV=P.filter(p=>p.status==='veiculo').length;
+  const almx=P.filter(p=>p.status==='almox').length, ref=P.filter(p=>p.status==='reforma').length;
+  const suc=P.filter(p=>p.status==='sucata').length;
+  const crit=P.filter(p=>p.status==='veiculo'&&p.sulcoMenor<3);
+  const aten=P.filter(p=>p.status==='veiculo'&&p.sulcoMenor>=3&&p.sulcoMenor<6);
+  const invest=P.reduce((s,p)=>s+(p.valorU||0),0);
+  const cpkArr=P.filter(p=>p.kmVida>0&&p.valorU>0).map(p=>cpk(p));
+  const cpkMed=cpkArr.length?cpkArr.reduce((a,b)=>a+b,0)/cpkArr.length:0;
+  mc.innerHTML=`<div class="vh"><div><h1>Dashboard</h1><div class="sub">Transccema · ${PARES_DEFAULT.length} conjuntos · ${new Date().toLocaleDateString('pt-BR')}</div></div>
+  <button class="btn primary" onclick="nav('cadastro')">➕ Novo Pneu</button></div>
+  <div class="vb">
+  <div class="kpis">
+    <div class="kpi o"><div class="lbl">Total Pneus</div><div class="val">${total}</div><div class="meta">${emV} em veículo</div></div>
+    <div class="kpi b"><div class="lbl">Almoxarifado</div><div class="val">${almx}</div><div class="meta">disponíveis</div></div>
+    <div class="kpi y"><div class="lbl">Em Reforma</div><div class="val">${ref}</div><div class="meta">recapando</div></div>
+    <div class="kpi r"><div class="lbl">Críticos</div><div class="val">${crit.length}</div><div class="meta">${aten.length} em atenção</div></div>
+    <div class="kpi g"><div class="lbl">CPK Médio</div><div class="val">R$ ${cpkMed.toFixed(3)}<small>/km</small></div><div class="meta"></div></div>
+    <div class="kpi o"><div class="lbl">Investimento</div><div class="val" style="font-size:18px">${fr(invest)}</div><div class="meta"></div></div>
+  </div>
+  <div class="g2">
+  <div class="card"><div class="ch"><h2>⚠️ Alertas</h2><span class="hint">${crit.length+aten.length} pneus</span></div>
+  ${[...crit,...aten].slice(0,8).map(p=>{const cl=p.sulcoMenor<3?'red':'yellow';return`<div class="al-item" onclick="openDet('${p.fogo}')"><div class="al-ic ${cl}">${p.sulcoMenor<3?'🔴':'🟡'}</div><div style="flex:1"><div style="font-weight:600">Fogo ${p.fogo}</div><div style="font-size:11px;color:var(--txt3)">${p.cavalo||p.carreta||'—'} · ${p.posicao||'—'}</div></div><div style="text-align:right"><div style="font-family:monospace;font-weight:700">${p.sulcoMenor}mm</div>${sbadge(p.sulcoMenor)}</div></div>`;}).join('')||'<div class="empty"><div class="eic">✅</div><div class="etxt">Sem alertas</div></div>'}
+  </div>
+  <div class="card"><div class="ch"><h2>📊 Status</h2></div><div class="cb">
+  ${[['Em Veículo','g',emV],['Almoxarifado','b',almx],['Reforma','y',ref],['Sucata/Descarte','r',suc]].map(([l,c,v])=>{const pct=total?Math.round(v/total*100):0;const col=c==='g'?'var(--green)':c==='b'?'var(--blue)':c==='y'?'var(--yellow)':'var(--red)';return`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>${l}</span><span style="font-weight:700">${v} <small style="color:var(--txt3)">(${pct}%)</small></span></div><div class="wb"><i style="width:${pct}%;background:${col}"></i></div></div>`;}).join('')}
+  </div></div>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="ch"><h2>🚛 Frota Recente</h2><button class="btn sm" onclick="nav('frota')">Ver todos</button></div>
+  <div class="tbl"><table><thead><tr><th>Cavalo</th><th>Carreta</th><th>Pneus</th><th>Críticos</th><th>KM Cavalo</th></tr></thead><tbody>
+  ${PARES_DEFAULT.slice(0,12).map((par,i)=>{
+    const vp=P.filter(p=>p.cavalo===par[0]||p.carreta===par[1]);
+    const vc=vp.filter(p=>p.sulcoMenor<3).length;
+    const hodo=CFG.hodos[par[0]]||0;
+    return`<tr onclick="nav('frota-map',{idx:${i}})"><td><span class="plate">${par[0]}</span></td><td><span class="plate">${par[1]}</span></td><td>${vp.length}/19</td><td>${vc>0?`<span class="badge red">${vc}</span>`:'—'}</td><td style="font-family:monospace">${hodo?fkm(hodo):'—'}</td></tr>`;
+  }).join('')}
+  </tbody></table></div></div>
+  </div>`;
+}
+
+// ============================
+//  FROTA
+// ============================
+function renderFrota(mc){
+  mc.innerHTML=`<div class="vh"><div><h1>🚛 Frota</h1><div class="sub">${PARES_DEFAULT.length} conjuntos</div></div>
+  <div class="si"><input class="si" id="fsrch" placeholder="🔍 Filtrar placa..." oninput="filtFrota(this.value)" style="width:280px"></div></div>
+  <div class="vb"><div class="veh-list" id="vlist"></div></div>`;
+  filtFrota('');
+}
+function filtFrota(q){
+  const el=document.getElementById('vlist'); if(!el) return;
+  const f=q.toLowerCase().trim();
+  el.innerHTML=PARES_DEFAULT.filter(([c,t])=>!f||c.toLowerCase().includes(f)||t.toLowerCase().includes(f)).map((par,i)=>{
+    const idx=PARES_DEFAULT.indexOf(par);
+    const vp=P.filter(p=>p.cavalo===par[0]||p.carreta===par[1]);
+    const nc=vp.filter(p=>p.sulcoMenor<3).length;
+    const na=vp.filter(p=>p.sulcoMenor>=3&&p.sulcoMenor<6).length;
+    const hodo=CFG.hodos[par[0]]||0;
+    return`<div class="vc" onclick="nav('frota-map',{idx:${idx}})">
+      <div class="pls"><span class="plate">${par[0]}</span><span style="color:var(--txt3)">+</span><span class="plate">${par[1]}</span></div>
+      <div class="inf">${vp.length} pneus · ${hodo?fkm(hodo):'sem KM'}</div>
+      <div class="sr2">
+        ${nc>0?`<span class="badge red">${nc} crítico${nc>1?'s':''}</span>`:''}
+        ${na>0?`<span class="badge yellow">${na} atenção</span>`:''}
+        ${nc===0&&na===0&&vp.length>0?'<span class="badge green">OK</span>':''}
+        ${vp.length===0?'<span class="badge gray">Sem pneus</span>':''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================
+//  MAPA DO VEÍCULO
+// ============================
+function renderFrotaMap(mc,idx){
+  MAP_IDX=idx;
+  const par=PARES_DEFAULT[idx]; if(!par) return;
+  const cav=par[0], carr=CFG.pairs[par[0]]||par[1];
+  const vp=P.filter(p=>(p.cavalo===cav||p.carreta===carr)&&p.status==='veiculo');
+  const hodo=CFG.hodos[cav]||0;
+  const nc=vp.filter(p=>p.sulcoMenor<3).length;
+  const na=vp.filter(p=>p.sulcoMenor>=3&&p.sulcoMenor<6).length;
+  const cpkMed=vp.filter(p=>cpk(p)>0).reduce((s,p,_,a)=>s+cpk(p)/a.length,0);
+  mc.innerHTML=`<div class="vh" style="flex-wrap:wrap;gap:8px">
+    <div><div class="back" onclick="nav('frota')">← Frota</div>
+    <h1><span class="plate">${cav}</span> + <span class="plate">${carr}</span></h1>
+    <div class="sub">Conjunto ${idx+1}/${PARES_DEFAULT.length}</div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn sm" onclick="openKmModal('${cav}')">📏 KM: ${hodo?fkm(hodo):'Atualizar'}</button>
+      <button class="btn sm" onclick="nav('frota-map',{idx:${Math.max(0,idx-1)}})">←</button>
+      <button class="btn sm" onclick="nav('frota-map',{idx:${Math.min(PARES_DEFAULT.length-1,idx+1)}})">→</button>
+    </div>
+  </div>
+  <div class="vb">
+  <div class="kpis">
+    <div class="kpi o"><div class="lbl">Montados</div><div class="val">${vp.length}<small>/19</small></div></div>
+    <div class="kpi r"><div class="lbl">Críticos</div><div class="val">${nc}</div></div>
+    <div class="kpi y"><div class="lbl">Atenção</div><div class="val">${na}</div></div>
+    <div class="kpi b"><div class="lbl">Hodômetro</div><div class="val" style="font-size:18px">${hodo?fkm(hodo):'—'}</div></div>
+    <div class="kpi g"><div class="lbl">CPK Médio</div><div class="val" style="font-size:18px">R$ ${cpkMed.toFixed(3)}</div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="ch"><h2>🗺 Mapa do Conjunto</h2><span class="hint">Arraste para mover · Clique = detalhe</span></div>
+    <div class="cb"><div class="map-wrap" id="mwrap"></div>
+    <div class="map-legend-new"><span><i class="leg-dot g"></i>Bom (&gt; 6mm)</span><span><i class="leg-dot y"></i>Atenção (3–6mm)</span><span><i class="leg-dot r"></i>Crítico (&lt; 3mm)</span></div>
+    </div></div>
+    <div class="card"><div class="ch"><h2>📦 Estoque</h2>
+    <div style="display:flex;gap:2px">
+      <button class="btn sm ${sTab==='almox'?'primary':''}" onclick="setSTab('almox')">Almox.(${P.filter(p=>p.status==='almox').length})</button>
+      <button class="btn sm ${sTab==='reforma'?'primary':''}" onclick="setSTab('reforma')">Reforma(${P.filter(p=>p.status==='reforma').length})</button>
+    </div></div>
+    <div class="stk-panel" id="stk"></div>
+    <div class="dz-row">
+      <div class="dz" id="dz-almox" data-dz="almox">↩ Almox</div>
+      <div class="dz dz-r" id="dz-reforma" data-dz="reforma">🔧 Reforma</div>
+      <div class="dz dz-s" id="dz-sucata" data-dz="sucata">🗑 Sucata</div>
+    </div></div>
+  </div>
+  </div>`;
+  buildMap(cav,carr);
+  buildStk();
+  setupDZ(cav,carr);
+}
+
+
+
+
+
+
+
+
+
+
+// Detailed alloy wheel SVG (circular face view)
+function wheelSVG(status,fogo){
+  const C={sg:'#22c55e',sy:'#eab308',sr:'#ef4444'}[status]||'#5a6478';
+  const Cd={sg:'#0f3520',sy:'#2e2400',sr:'#2e0f0f'}[status]||'#1a1f2a';
+  // 6 spokes
+  let spokes='';
+  for(let i=0;i<6;i++){
+    const a=(i*60)*Math.PI/180;
+    const x1=32+7*Math.cos(a), y1=32+7*Math.sin(a);
+    const x2=32+16*Math.cos(a), y2=32+16*Math.sin(a);
+    spokes+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#11151d" stroke-width="3.5" stroke-linecap="round"/>`;
+  }
+  // 5 lug bolts
+  let lugs='';
+  for(let i=0;i<5;i++){
+    const a=(i*72-90)*Math.PI/180;
+    const x=32+4.5*Math.cos(a), y=32+4.5*Math.sin(a);
+    lugs+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.1" fill="#0a0d12"/>`;
+  }
+  return `<svg viewBox="0 0 64 64">
+    <defs>
+      <radialGradient id="rb" cx="38%" cy="34%"><stop offset="55%" stop-color="#1c2028"/><stop offset="100%" stop-color="#080a0e"/></radialGradient>
+      <radialGradient id="rm" cx="38%" cy="34%"><stop offset="0%" stop-color="#6b7689"/><stop offset="55%" stop-color="#3a4254"/><stop offset="100%" stop-color="#20262f"/></radialGradient>
+      <radialGradient id="hb" cx="40%" cy="35%"><stop offset="0%" stop-color="#7a8599"/><stop offset="100%" stop-color="#2a313e"/></radialGradient>
+    </defs>
+    <circle class="glowring" cx="32" cy="32" r="30" fill="none" stroke="${C}" stroke-width="2.5" opacity=".9" style="filter:drop-shadow(0 0 5px ${C})"/>
+    <circle cx="32" cy="32" r="28.5" fill="url(#rb)"/>
+    <circle cx="32" cy="32" r="26" fill="none" stroke="#04060a" stroke-width="4.5" stroke-dasharray="1.6 2.6"/>
+    <circle cx="32" cy="32" r="21" fill="${Cd}" opacity=".5"/>
+    <circle cx="32" cy="32" r="20" fill="#0c0f15" stroke="#191e28" stroke-width="1"/>
+    <circle cx="32" cy="32" r="17.5" fill="url(#rm)" stroke="#11151d" stroke-width="1"/>
+    <g class="hubcap">${spokes}<circle cx="32" cy="32" r="8" fill="url(#hb)" stroke="#11151d" stroke-width="1"/>${lugs}<circle cx="32" cy="32" r="2.2" fill="#0a0d12"/></g>
+    <ellipse cx="26" cy="24" rx="6" ry="4" fill="rgba(255,255,255,.07)"/>
+  </svg>`;
+}
+
+function buildMap(cav,carr){
+  const w=document.getElementById('mwrap'); if(!w) return;
+  w.innerHTML='';
+  const stage=document.createElement('div'); stage.className='map-stage';
+  const scan=document.createElement('div'); scan.className='hud-scan'; stage.appendChild(scan);
+  stage.appendChild(buildUnit(cav,POS_CAV,false));
+  const conn=document.createElement('div'); conn.className='tconn';
+  conn.innerHTML='<div class="cline"></div><div class="clbl">5ª RODA</div><div class="cline"></div>';
+  stage.appendChild(conn);
+  stage.appendChild(buildUnit(carr,POS_CARR,true));
+  w.appendChild(stage);
+}
+
+function buildUnit(placa,axles,isCarr){
+  const u=document.createElement('div'); u.className='truck-unit '+(isCarr?'unit-trailer':'unit-tractor');
+  const hdr=document.createElement('div'); hdr.className='truck-hud-hdr';
+  hdr.innerHTML=`<div class="hud-type">${isCarr?'SEMI-REBOQUE':'CAVALO MECÂNICO'}</div><div class="hud-plate">${placa}</div>`;
+  u.appendChild(hdr);
+  const ch=document.createElement('div'); ch.className='truck-chassis';
+  const id=placa.replace(/\s/g,'');
+  if(!isCarr){
+    const cab=document.createElement('div'); cab.className='tcab';
+    cab.innerHTML=`<svg viewBox="0 0 148 56">
+      <defs>
+        <linearGradient id="cb${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a2840"/><stop offset="100%" stop-color="#0e1626"/></linearGradient>
+        <linearGradient id="ws${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(34,211,238,.22)"/><stop offset="100%" stop-color="rgba(34,211,238,.05)"/></linearGradient>
+      </defs>
+      <rect x="14" y="40" width="120" height="6" rx="3" fill="rgba(34,211,238,.12)"/>
+      <rect x="8" y="4" width="132" height="42" rx="11" fill="url(#cb${id})" stroke="rgba(34,211,238,.25)" stroke-width="1"/>
+      <rect x="18" y="9" width="112" height="23" rx="6" fill="url(#ws${id})" stroke="rgba(34,211,238,.3)" stroke-width=".8"/>
+      <rect x="23" y="12" width="46" height="9" rx="2.5" fill="rgba(255,255,255,.07)"/>
+      <line x1="74" y1="9" x2="74" y2="32" stroke="rgba(0,0,0,.3)" stroke-width="2"/>
+      <line x1="8" y1="33" x2="140" y2="33" stroke="rgba(34,211,238,.1)" stroke-width="1"/>
+      <rect x="2" y="17" width="7" height="13" rx="2.5" fill="#0e1626" stroke="rgba(34,211,238,.25)" stroke-width=".7"/>
+      <rect x="139" y="17" width="7" height="13" rx="2.5" fill="#0e1626" stroke="rgba(34,211,238,.25)" stroke-width=".7"/>
+      <rect x="13" y="40" width="20" height="5" rx="2.5" fill="rgba(255,240,160,.18)" stroke="rgba(255,220,80,.3)" stroke-width=".6"/>
+      <rect x="115" y="40" width="20" height="5" rx="2.5" fill="rgba(255,240,160,.18)" stroke="rgba(255,220,80,.3)" stroke-width=".6"/>
+    </svg>`;
+    ch.appendChild(cab);
+  } else {
+    const kp=document.createElement('div'); kp.className='tkingpin';
+    kp.innerHTML=`<svg viewBox="0 0 34 34">
+      <circle cx="17" cy="17" r="16" fill="#0e1626" stroke="rgba(34,211,238,.3)" stroke-width="1"/>
+      <circle cx="17" cy="17" r="11" fill="none" stroke="rgba(34,211,238,.2)" stroke-width="1.5"/>
+      <circle cx="17" cy="17" r="6" fill="url(#rm)" stroke="#11151d" stroke-width="1"/>
+      <circle cx="17" cy="17" r="2.5" fill="#1a2030"/>
+    </svg>`;
+    ch.appendChild(kp);
+  }
+  const frame=document.createElement('div'); frame.className='tframe';
+  axles.forEach(ax=>{
+    const row=document.createElement('div'); row.className='taxle';
+    const lg=document.createElement('div'); lg.className='wpair';
+    ax.l.forEach(pos=>lg.appendChild(buildSlot(placa,pos,isCarr)));
+    const beam=document.createElement('div'); beam.className='taxle-beam';
+    beam.innerHTML=`<span class="taxle-lbl">EIXO ${ax.a}</span>`;
+    const rg=document.createElement('div'); rg.className='wpair';
+    ax.r.forEach(pos=>rg.appendChild(buildSlot(placa,pos,isCarr)));
+    row.appendChild(lg); row.appendChild(beam); row.appendChild(rg);
+    frame.appendChild(row);
+  });
+  ch.appendChild(frame); u.appendChild(ch);
+  if(isCarr){
+    const sp=document.createElement('div'); sp.className='spare-zone';
+    sp.innerHTML='<span class="spare-label">🔒 Estepe</span>';
+    sp.appendChild(buildSlot(placa,'Estepe',true)); u.appendChild(sp);
+  }
+  return u;
+}
+
+function buildSlot(placa,pos,isCarr){
+  const pneu=P.find(x=>x.status==='veiculo'&&(isCarr?x.carreta===placa:x.cavalo===placa)&&x.posicao===pos);
+  const slot=document.createElement('div');
+  slot.className='wheel-slot'+(pos==='Estepe'?' spare-slot':'');
+  slot.dataset.pos=pos; slot.dataset.placa=placa; slot.dataset.iscarr=isCarr?'1':'0';
+  if(pneu){
+    const sc=sst(pneu.sulcoMenor);
+    const wd=document.createElement('div');
+    wd.className='wheel w-'+sc.slice(1);
+    wd.draggable=true; wd.dataset.fogo=pneu.fogo; wd.dataset.from='veiculo'; wd.dataset.pos=pos;
+    wd.title=`${pneu.fogo} · ${pneu.sulcoMenor}mm · ${pneu.fabricante} ${pneu.modelo}`;
+    const kmP=getKmPneu(pneu);
+    const kmTxt=kmP>0?(kmP>=1000?(kmP/1000).toFixed(1).replace('.0','')+'k km':kmP+' km'):'— km';
+    wd.innerHTML=wheelSVG(sc,pneu.fogo)+`<span class="fogo-tag">${pneu.fogo}</span><span class="km-tag">${kmTxt}</span>`;
+    wd.onclick=ev=>{ev.stopPropagation();openDet(pneu.fogo);};
+    wd.ondragstart=ev=>{mDrag={fogo:pneu.fogo,from:'veiculo',pos};wd.classList.add('dragging');ev.dataTransfer.effectAllowed='move';};
+    wd.ondragend=()=>{wd.classList.remove('dragging');clrOver();};
+    slot.appendChild(wd);
+  } else {
+    const lb=document.createElement('span'); lb.className='empty-lbl'; lb.textContent=POS_LBL[pos]||pos; slot.appendChild(lb);
+  }
+  slot.ondragover=ev=>{ev.preventDefault();slot.classList.add('slot-over');};
+  slot.ondragleave=()=>slot.classList.remove('slot-over');
+  slot.ondrop=ev=>{ev.preventDefault();slot.classList.remove('slot-over');dropPos(pos,placa,isCarr);};
+  return slot;
+}
+
+function buildStk(){
+  const g=document.getElementById('stk'); if(!g) return;
+  const list=P.filter(p=>p.status===sTab).sort((a,b)=>b.sulcoMenor-a.sulcoMenor);
+  g.innerHTML=list.map(p=>{
+    const sc=sst(p.sulcoMenor);
+    return `<div class="st" draggable="true" title="${p.fogo} · ${p.sulcoMenor}mm · ${p.fabricante} ${p.modelo}"
+      onclick="openDet('${p.fogo}')"
+      ondragstart="mDrag={fogo:'${p.fogo}',from:'${sTab}',pos:null}"
+      ondragend="clrOver()">
+      <div class="mini2">${wheelSVG(sc,p.fogo)}</div><div class="slb">${p.fogo}</div></div>`;
+  }).join('')||`<div style="grid-column:1/-1;padding:28px;text-align:center;color:rgba(34,211,238,.3);font-size:12px">Vazio</div>`;
+}
+function setupDZ(cav,carr){
+  ['dz-almox','dz-reforma','dz-sucata'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.ondragover=ev=>{ev.preventDefault();el.classList.add('over');};
+    el.ondragleave=()=>el.classList.remove('over');
+    el.ondrop=ev=>{ev.preventDefault();el.classList.remove('over');dropZone(el.dataset.dz,cav,carr);};
+  });
+}
+function clrOver(){document.querySelectorAll('.over').forEach(e=>e.classList.remove('over'));}
+function setSTab(t){sTab=t;nav('frota-map',{idx:MAP_IDX});}
+
+async function dropPos(targetPos,targetPlaca,isCarr){
+  if(!mDrag) return;
+  const {fogo,from,pos:srcPos}=mDrag;
+  mDrag=null;
+  const idxAtual = MAP_IDX;
+
+  // Busca a planilha fresquinha ANTES de decidir — evita agir com base numa posição
+  // que já mudou de dono nos últimos segundos (a tela só atualiza sozinha a cada 20s)
+  toast('Conferindo posição...', '#38bdf8');
+  await load();
+
+  const pneu=getPneu(fogo); if(!pneu){ toast('Pneu não encontrado — tela atualizada', '#eab308'); renderSidebar(); nav('frota-map',{idx:idxAtual}); return; }
+  const cav=PARES_DEFAULT[idxAtual][0];
+  const carr=CFG.pairs[cav]||PARES_DEFAULT[idxAtual][1];
+  const occ=P.find(p=>p.status==='veiculo'&&(isCarr?p.carreta===targetPlaca:p.cavalo===targetPlaca)&&p.posicao===targetPos);
+  const toSync=[];
+  if(from==='veiculo'){
+    if(srcPos===targetPos){ renderSidebar(); nav('frota-map',{idx:idxAtual}); return; }
+    if(occ&&occ.fogo!==fogo){occ.posicao=srcPos;addM(occ.fogo,'Rodízio',occ.cavalo,occ.carreta,srcPos,occ.sulcoMenor,0);toSync.push(occ);}
+    pneu.posicao=targetPos;
+    if(isCarr){pneu.carreta=targetPlaca;pneu.cavalo=null;}else{pneu.cavalo=targetPlaca;pneu.carreta=null;}
+    addM(fogo,'Rodízio',pneu.cavalo,pneu.carreta,targetPos,pneu.sulcoMenor,0);
+    toSync.push(pneu);
+    toast('Rodízio: '+fogo+' → '+targetPos,'#f97316');
+  } else {
+    if(occ){occ.status='almox';occ.cavalo=null;occ.carreta=null;occ.posicao=null;addM(occ.fogo,'Saída para Almoxarifado','','','',occ.sulcoMenor,0);toSync.push(occ);}
+    pneu.status='veiculo';pneu.posicao=targetPos;
+    const hodo=CFG.hodos[cav]||0;
+    pneu.kmInst=hodo;
+    if(isCarr){pneu.carreta=targetPlaca;pneu.cavalo=null;}else{pneu.cavalo=targetPlaca;pneu.carreta=null;}
+    addM(fogo,'Entrada em Veículo',pneu.cavalo,pneu.carreta,targetPos,pneu.sulcoMenor,0);
+    toSync.push(pneu);
+    toast(fogo+' montado em '+targetPos,'#22c55e');
+  }
+  renderSidebar(); nav('frota-map',{idx:idxAtual});
+  for(const p of toSync){ await syncPneu(p); }
+}
+function dropZone(zone,cav,carr){
+  if(!mDrag) return;
+  const {fogo,from}=mDrag;
+  const pneu=getPneu(fogo); if(!pneu){mDrag=null;return;}
+  if(from==='veiculo'){pneu.cavalo=null;pneu.carreta=null;pneu.posicao=null;}
+  pneu.status=zone;
+  const t={'almox':'Saída para Almoxarifado','reforma':'Envio para Reforma','sucata':'Sucata'};
+  addM(fogo,t[zone]||zone,'','','',pneu.sulcoMenor,0);
+  toast(fogo+' → '+(zone==='almox'?'Almox.':zone==='reforma'?'Reforma':'Sucata'),'#38bdf8');
+  mDrag=null;nav('frota-map',{idx:MAP_IDX});
+  syncPneu(pneu);
+}
+
+// ============================
+//  KM MODAL
+// ============================
+function openKmModal(cav){
+  KM_CAV=cav;
+  const h=CFG.hodos[cav]||0;
+  document.getElementById('km-title').textContent='Hodômetro: '+cav;
+  document.getElementById('km-input').value=h||'';
+  document.getElementById('km-hint').textContent=h?'Atual: '+fkm(h):'Sem registro';
+  document.getElementById('km-modal').classList.add('open');
+}
+function closeKm(){document.getElementById('km-modal').classList.remove('open');KM_CAV=null;}
+function saveKm(){
+  if(!KM_CAV) return;
+  const v=parseInt(document.getElementById('km-input').value)||0;
+  const old=CFG.hodos[KM_CAV]||0;
+  if(v<old){toast('KM não pode ser menor que o atual!','#ef4444');return;}
+  CFG.hodos[KM_CAV]=v;
+  // Atualizar kmVida dos pneus do cavalo e carreta parceira
+  const carr=CFG.pairs[KM_CAV];
+  const afetados=[];
+  P.filter(p=>p.status==='veiculo'&&(p.cavalo===KM_CAV||(carr&&p.carreta===carr))).forEach(p=>{
+    const kmNovo=Math.max(0,v-(p.kmInst||0));
+    if(kmNovo>p.kmVida){ p.kmVida=kmNovo; afetados.push(p); }
+  });
+  closeKm();toast('Hodômetro atualizado: '+fkm(v),'#22c55e');nav('frota-map',{idx:MAP_IDX||0});
+  (async()=>{ await syncHodometro(KM_CAV, v); for(const p of afetados){ await syncPneu(p); } })();
+}
+document.getElementById('km-modal').onclick=e=>{if(e.target===document.getElementById('km-modal'))closeKm();};
+
+// ============================
+//  ESTOQUE + REFORMADORA
+// ============================
+function renderEstoque(mc){
+  const almx=P.filter(p=>p.status==='almox');
+  const ref=P.filter(p=>p.status==='reforma');
+  const tvA=almx.reduce((s,p)=>s+(p.valorU||0),0);
+  const tvR=ref.reduce((s,p)=>s+(p.valorU||0),0);
+  mc.innerHTML=`<div class="vh"><div><h1>📊 Estoque Geral</h1><div class="sub">Almoxarifado + Reformadora</div></div>
+  <button class="btn" onclick="nav('cadastro')" style="background:var(--green);color:#fff;font-weight:700">➕ Novo Pneu</button></div>
+  <div class="vb">
+  <div class="kpis">
+    <div class="kpi b"><div class="lbl">Almoxarifado</div><div class="val">${almx.length}</div><div class="meta">${fr(tvA)}</div></div>
+    <div class="kpi y"><div class="lbl">Em Reforma</div><div class="val">${ref.length}</div><div class="meta">${fr(tvR)}</div></div>
+    <div class="kpi o"><div class="lbl">Total em Estoque</div><div class="val">${almx.length+ref.length}</div><div class="meta">${fr(tvA+tvR)}</div></div>
+  </div>
+  <div class="card">
+  <div class="ch"><h2>📦 Almoxarifado (${almx.length})</h2></div>
+  <div class="tbl"><table><thead><tr><th>Fogo</th><th>Fabricante</th><th>Modelo</th><th>Vida</th><th class="r">Sulco</th><th class="r">KM Total</th><th class="r">Valor</th><th>Almox.</th></tr></thead>
+  <tbody>${almx.length?almx.map(p=>`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td><td>${p.fabricante}</td><td>${p.modelo}</td><td style="font-size:11px">${p.vida}</td><td class="r">${sbadge(p.sulcoMenor)}</td><td class="r">${fkm(p.kmTotal||p.kmVida)}</td><td class="r">${fr(p.valorU)}</td><td style="font-size:11px">${p.almoxarifado||'—'}</td></tr>`).join(''):'<tr><td colspan="8"><div class="empty"><div class="eic">📦</div><div class="etxt">Vazio</div></div></td></tr>'}</tbody>
+  </table></div></div>
+  <div class="card" style="margin-top:14px">
+  <div class="ch"><h2>🔧 Reformadora (${ref.length})</h2></div>
+  <div class="tbl"><table><thead><tr><th>Fogo</th><th>Fabricante</th><th>Modelo</th><th>Vida</th><th class="r">Sulco Entrada</th><th class="r">KM Rodado</th><th class="r">Valor</th></tr></thead>
+  <tbody>${ref.length?ref.map(p=>`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td><td>${p.fabricante}</td><td>${p.modelo}</td><td style="font-size:11px">${p.vida}</td><td class="r">${sbadge(p.sulcoMenor)}</td><td class="r">${fkm(p.kmVida)}</td><td class="r">${fr(p.valorU)}</td></tr>`).join(''):'<tr><td colspan="7"><div class="empty"><div class="eic">🔧</div><div class="etxt">Nenhum pneu em reforma</div></div></td></tr>'}</tbody>
+  </table></div></div>
+  </div>`;
+}
+
+// ============================
+//  LISTA GENÉRICA
+// ============================
+function renderList(mc,status,title,sub){
+  const list=status==='all'?P:P.filter(p=>p.status===status);
+  const invest=list.reduce((s,p)=>s+(p.valorU||0),0);
+  mc.innerHTML=`<div class="vh"><div><h1>${title}</h1><div class="sub">${sub} · ${list.length} pneus</div></div>
+  <div style="display:flex;gap:8px"><input style="width:250px" placeholder="🔍 Fogo / fabricante..." oninput="filtList(this.value,'${status}')">
+  ${(status==='almox'||status==='all')?'<button class="btn primary" onclick="nav(\'cadastro\')" style="background:var(--green);color:#fff;font-weight:700">➕ Novo Pneu</button>':''}</div></div>
+  <div class="vb">
+  ${list.length?`<div class="kpis"><div class="kpi o"><div class="lbl">Total</div><div class="val">${list.length}</div></div><div class="kpi b"><div class="lbl">Investimento</div><div class="val" style="font-size:18px">${fr(invest)}</div></div></div>`:''}
+  <div class="card">
+  <div class="tbl"><table>
+  <thead><tr><th>Fogo</th><th>Fabricante</th><th>Modelo</th><th>Vida</th><th class="r">Sulco</th><th class="r">KM</th><th class="r">CPK</th>${status==='veiculo'||status==='all'?'<th>Veículo</th><th>Posição</th>':''}<th>Status</th><th></th></tr></thead>
+  <tbody id="list-body">${renderListRows(list,status)}</tbody>
+  </table></div></div>
+  </div>`;
+}
+function renderListRows(list,status){
+  if(!list.length) return`<tr><td colspan="12"><div class="empty"><div class="eic">📭</div><div class="etxt">Nenhum pneu</div></div></td></tr>`;
+  const stMap={'veiculo':'<span class="badge green">Veículo</span>','almox':'<span class="badge blue">Almox.</span>','reforma':'<span class="badge yellow">Reforma</span>','sucata':'<span class="badge red">Sucata</span>'};
+  return list.map(p=>{
+    const kmR=getKmPneu(p);
+    const cpkV=cpk({...p,kmVida:kmR});
+    return`<tr onclick="openDet('${p.fogo}')">
+      <td><span class="fg">${p.fogo}</span></td><td>${p.fabricante}</td><td>${p.modelo}</td>
+      <td style="font-size:11px">${p.vida}</td>
+      <td class="r">${sbadge(p.sulcoMenor)}</td>
+      <td class="r">${fkm(kmR)}</td>
+      <td class="r">${cpkV>0?'R$ '+cpkV.toFixed(4):'—'}</td>
+      ${status==='veiculo'||status==='all'?`<td><span class="plate">${p.cavalo||p.carreta||'—'}</span></td><td style="font-family:monospace;font-size:11px">${p.posicao||'—'}</td>`:''}
+      <td>${stMap[p.status]||p.status}</td>
+      <td><button class="btn sm" onclick="event.stopPropagation();nav('edit',{fogo:'${p.fogo}'})">✏️</button></td>
+    </tr>`;
+  }).join('');
+}
+function filtList(q,status){
+  const lb=document.getElementById('list-body'); if(!lb) return;
+  const list=(status==='all'?P:P.filter(p=>p.status===status)).filter(p=>!q||p.fogo.toLowerCase().includes(q.toLowerCase())||p.fabricante.toLowerCase().includes(q.toLowerCase())||p.modelo.toLowerCase().includes(q.toLowerCase()));
+  lb.innerHTML=renderListRows(list,status);
+}
+
+// ============================
+//  ENGATE / DESENGATE
+// ============================
+function vagasVeiculo(cav,carr){
+  const posCav=POS_CAV.flatMap(a=>[...a.l,...a.r]);
+  const posCarr=POS_CARR.flatMap(a=>[...a.l,...a.r]).concat('Estepe');
+  const ocCav=new Set(P.filter(p=>p.status==='veiculo'&&p.cavalo===cav&&p.posicao).map(p=>p.posicao));
+  const ocCarr=new Set(P.filter(p=>p.status==='veiculo'&&p.carreta===carr&&p.posicao).map(p=>p.posicao));
+  return {
+    cav:posCav.filter(p=>!ocCav.has(p)),
+    carr:carr?posCarr.filter(p=>!ocCarr.has(p)):[]
+  };
+}
+
+function renderAlocar(mc){
+  // Pneus que faltam alocar = SÓ almoxarifado (prontos pra montar; reforma não entra)
+  const soltos=P.filter(p=>p.status==='almox')
+    .sort((a,b)=>(b.sulcoMenor||0)-(a.sulcoMenor||0));
+  const alocados=P.filter(p=>p.status==='veiculo').length;
+  const totalAlocar=alocados+soltos.length;
+  const pctAloc=totalAlocar>0?(alocados/totalAlocar*100):0;
+  // Pneus em veículo sem posição
+  const semPos=P.filter(p=>p.status==='veiculo'&&!p.posicao);
+  // ─── Pendências por VEÍCULO, classificando cavalo e carreta separadamente ───
+  const POS_C=POS_CAV.flatMap(a=>[...a.l,...a.r]);
+  const POS_T=POS_CARR.flatMap(a=>[...a.l,...a.r]).concat('Estepe');
+  // todas as carretas conhecidas: dos pares + as que têm pneus montados (órfãs como BZA7517)
+  const carrComPneu=[...new Set(P.filter(p=>p.status==='veiculo'&&p.carreta).map(p=>p.carreta))];
+  const todasCarr=[...new Set([...Object.values(CFG.pairs).filter(Boolean),...carrComPneu])];
+  // mapa carreta -> cavalo parceiro (se houver)
+  const carr2cav={}; Object.entries(CFG.pairs).forEach(([c,t])=>{if(t)carr2cav[t]=c;});
+
+  const comVaga=[];
+  // 1) Cavalos com posição faltando
+  Object.keys(CFG.pairs).forEach(cav=>{
+    const oc=new Set(P.filter(p=>p.status==='veiculo'&&p.cavalo===cav&&p.posicao).map(p=>p.posicao));
+    const falta=POS_C.filter(p=>!oc.has(p));
+    const nMont=P.filter(p=>p.status==='veiculo'&&p.cavalo===cav).length;
+    if(falta.length>0){
+      const tipo=nMont===0?'nova':'parcial';
+      comVaga.push({placa:cav,unidade:'cavalo',cav,carr:CFG.pairs[cav],vagasPos:falta,tot:falta.length,nMont,tipo,
+        sub:tipo==='nova'?'Cavalo novo — sem pneus':falta.length+' posição(ões) a montar'});
+    }
+  });
+  // 2) Carretas com posição faltando
+  todasCarr.forEach(carr=>{
+    const oc=new Set(P.filter(p=>p.status==='veiculo'&&p.carreta===carr&&p.posicao).map(p=>p.posicao));
+    const falta=POS_T.filter(p=>!oc.has(p));
+    const nMont=P.filter(p=>p.status==='veiculo'&&p.carreta===carr).length;
+    if(falta.length>0){
+      const soEstepe = falta.length===1 && falta[0]==='Estepe';
+      const tipo = soEstepe?'estepe' : (nMont===0?'nova':'parcial');
+      comVaga.push({placa:carr,unidade:'carreta',cav:carr2cav[carr]||null,carr,vagasPos:falta,tot:falta.length,nMont,tipo,
+        sub: soEstepe?'Falta só o estepe' : (nMont===0?'Carreta nova — sem pneus':falta.length+' posição(ões) a montar')});
+    }
+  });
+  // ordenar: estepe (rápido) → parcial → nova
+  const ordTipo={estepe:0,parcial:1,nova:2};
+  comVaga.sort((a,b)=>(ordTipo[a.tipo]-ordTipo[b.tipo])||(b.tot-a.tot));
+  const nEstepe=comVaga.filter(v=>v.tipo==='estepe').length;
+  const nNovas=comVaga.filter(v=>v.tipo==='nova').length;
+  const nParcial=comVaga.filter(v=>v.tipo==='parcial').length;
+
+  const aq=(ALOCQ||'').toLowerCase();
+  const soltosF=soltos.filter(p=>!aq||p.fogo.toLowerCase().includes(aq)||(p.fabricante||'').toLowerCase().includes(aq)||(p.modelo||'').toLowerCase().includes(aq));
+
+  mc.innerHTML=`
+  <div class="vb">
+    <div class="vh"><div>
+      <div class="vt">📍 Pneus a Alocar</div>
+      <div class="vs">${soltos.length} pneus no almoxarifado p/ montar · ${comVaga.length} veículos com posição vaga · ${pctAloc.toFixed(2).replace('.',',')}% alocados</div>
+    </div></div>
+
+    <div class="kpis" style="margin-bottom:16px">
+      <div class="kpi o"><div class="lbl">Total a Alocar</div><div class="val">${totalAlocar.toLocaleString('pt-BR')}</div><div class="meta">em veículo + almox</div></div>
+      <div class="kpi b"><div class="lbl">Alocados</div><div class="val">${alocados.toLocaleString('pt-BR')}</div><div class="meta">em veículo</div></div>
+      <div class="kpi y"><div class="lbl">Faltando Alocar</div><div class="val">${soltos.length}</div><div class="meta">no almoxarifado</div></div>
+      <div class="kpi g"><div class="lbl">Pneus Alocados (%)</div><div class="val">${pctAloc.toFixed(2).replace('.',',')}</div><div class="meta">${alocados}/${totalAlocar}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+
+      <div class="card">
+        <div class="ch" style="display:flex;justify-content:space-between;align-items:center">
+          <h2>🛞 No almoxarifado p/ montar (${soltosF.length})</h2>
+        </div>
+        <div class="cb" style="padding-top:0">
+          <input placeholder="🔍 Buscar fogo / fabricante..." value="${ALOCQ||''}" oninput="ALOCQ=this.value;renderMain()"
+            style="width:100%;padding:9px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-size:13px;margin-bottom:10px">
+          <div style="max-height:520px;overflow-y:auto;display:flex;flex-direction:column;gap:7px">
+          ${soltosF.length?soltosF.map(p=>{
+            const sc=sst(p.sulcoMenor);
+            const cor=sc==='sg'?'var(--green)':sc==='sy'?'var(--yellow)':'var(--red)';
+            const orig=p.status==='almox'?'📦 Almox':'🔧 Reforma';
+            return `<div style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--bd);border-radius:9px;background:var(--bg2)">
+              <div style="width:8px;height:8px;border-radius:50%;background:${cor};flex-shrink:0;box-shadow:0 0 6px ${cor}"></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-family:monospace;font-weight:700;color:var(--txt);font-size:14px">${p.fogo}</div>
+                <div style="font-size:11px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.fabricante} ${p.modelo} · ${p.sulcoMenor}mm · ${orig}</div>
+              </div>
+              <button class="btn" onclick="abrirAlocar('${p.fogo}')" style="background:var(--green);color:#fff;font-weight:600;padding:6px 12px;font-size:12px;white-space:nowrap">Alocar →</button>
+            </div>`;
+          }).join(''):'<div style="padding:24px;text-align:center;color:var(--txt3)">Nenhum pneu disponível 🎉</div>'}
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ch"><h2>🚛 Veículos com pendência (${comVaga.length})</h2></div>
+        <div class="cb" style="padding-top:0">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+            ${nEstepe?`<span style="font-size:11px;background:rgba(234,179,8,.15);color:var(--yellow);padding:3px 9px;border-radius:20px;font-weight:600">🔧 ${nEstepe} só estepe</span>`:''}
+            ${nParcial?`<span style="font-size:11px;background:rgba(249,115,22,.15);color:var(--accent);padding:3px 9px;border-radius:20px;font-weight:600">⚠️ ${nParcial} parcial</span>`:''}
+            ${nNovas?`<span style="font-size:11px;background:rgba(56,189,248,.13);color:var(--blue);padding:3px 9px;border-radius:20px;font-weight:600">🆕 ${nNovas} novas (sem pneus)</span>`:''}
+          </div>
+          <div style="max-height:540px;overflow-y:auto">
+          ${comVaga.length?comVaga.map(v=>{
+            const cor=v.tipo==='estepe'?'var(--yellow)':v.tipo==='nova'?'var(--blue)':'var(--accent)';
+            const icone=v.tipo==='estepe'?'🔩':v.tipo==='nova'?'🆕':'⚠️';
+            const bg=v.tipo==='estepe'?'rgba(234,179,8,.07)':v.tipo==='nova'?'rgba(56,189,248,.06)':'rgba(249,115,22,.05)';
+            const uLbl=v.unidade==='cavalo'?'Cavalo':'Carreta';
+            const irPlaca=v.cav||v.carr;
+            return `<div style="padding:10px 11px;border:1px solid var(--bd);border-left:3px solid ${cor};border-radius:8px;background:${bg};margin-bottom:7px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+                <div style="font-family:monospace;font-weight:700;color:var(--txt);font-size:13px">${icone} ${v.placa} <span style="font-size:10px;font-family:inherit;font-weight:500;color:var(--txt3)">(${uLbl})</span></div>
+                <span style="background:${cor};color:#06121f;font-weight:700;padding:2px 8px;border-radius:20px;font-size:11px">${v.tot}</span>
+              </div>
+              <div style="font-size:11px;color:var(--txt3);margin-bottom:6px">${v.sub}</div>
+              ${v.tipo!=='nova'?`<div style="display:flex;flex-wrap:wrap;gap:4px">
+                ${v.vagasPos.map(pos=>`<span style="font-size:10px;font-family:monospace;background:${v.unidade==='cavalo'?'rgba(34,211,238,.1)':'rgba(249,115,22,.08)'};border:1px solid ${v.unidade==='cavalo'?'rgba(34,211,238,.25)':'rgba(249,115,22,.2)'};color:${v.unidade==='cavalo'?'var(--blue)':'var(--accent)'};padding:1px 6px;border-radius:5px" title="${POS_LBL[pos]||pos}">${pos==='Estepe'?'🔩 Estepe':pos}</span>`).join('')}
+              </div>`:''}
+              ${irPlaca?`<button class="btn" onclick="irMapaVeiculo('${irPlaca}')" style="margin-top:7px;background:var(--bg2);border:1px solid var(--bd);color:var(--txt2);padding:4px 11px;font-size:11px">Ver no mapa →</button>`:''}
+            </div>`;
+          }).join(''):'<div style="padding:24px;text-align:center;color:var(--txt3)">Todos os veículos completos ✓</div>'}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>`;
+}
+
+function irMapaVeiculo(placa){
+  const allCav=Object.keys(CFG.pairs).sort();
+  let cav=placa;
+  // se for carreta, achar cavalo parceiro
+  if(allCav.indexOf(placa)<0){
+    const par=Object.entries(CFG.pairs).find(([c,t])=>t===placa);
+    if(par) cav=par[0];
+  }
+  const idx=allCav.indexOf(cav);
+  VP={idx:idx>=0?idx:0}; nav('frota-map');
+}
+
+// Modal de alocação rápida
+function abrirAlocar(fogo){
+  const p=getPneu(fogo); if(!p) return;
+  ALOC_FOGO=fogo;
+  // Montar lista de veículos+posições vagas
+  const pares=Object.entries(CFG.pairs);
+  let opts='';
+  pares.forEach(([cav,carr])=>{
+    const v=vagasVeiculo(cav,carr);
+    v.cav.forEach(pos=>{opts+=`<option value="${cav}|${pos}|cav">${cav} → ${pos} (${POS_LBL[pos]||pos})</option>`;});
+    v.carr.forEach(pos=>{opts+=`<option value="${carr}|${pos}|carr|${cav}">${carr} → ${pos} (${POS_LBL[pos]||pos})</option>`;});
+  });
+  document.getElementById('aloc-title').textContent='Alocar pneu '+fogo;
+  document.getElementById('aloc-info').textContent=p.fabricante+' '+p.modelo+' · '+p.sulcoMenor+'mm · '+p.vida;
+  document.getElementById('aloc-select').innerHTML='<option value="">Selecione veículo e posição...</option>'+opts;
+  document.getElementById('aloc-modal').classList.add('open');
+}
+function fecharAlocar(){document.getElementById('aloc-modal').classList.remove('open');ALOC_FOGO=null;}
+function confirmarAlocar(){
+  const val=document.getElementById('aloc-select').value;
+  if(!val){toast('Selecione uma posição','#eab308');return;}
+  const parts=val.split('|');
+  const p=getPneu(ALOC_FOGO); if(!p) return;
+  const pos=parts[1], tipo=parts[2];
+  if(tipo==='cav'){ p.cavalo=parts[0]; p.carreta=null; }
+  else { p.carreta=parts[0]; p.cavalo=parts[3]; }
+  p.posicao=pos;
+  const oldStatus=p.status;
+  p.status='veiculo';
+  // herda km do hodômetro se não tiver
+  const hodo=CFG.hodos[p.cavalo]||getHodoCarreta(p.carreta)||0;
+  if(hodo>0){ p.kmInst=hodo; }
+  addM(p.fogo,'Montagem ('+(oldStatus==='almox'?'almox':'reforma')+'→veículo)',p.cavalo,p.carreta,pos,p.sulcoMenor,getKmPneu(p));
+  p.kmVida=getKmPneu(p);
+  fecharAlocar();
+  toast('✓ '+ALOC_FOGO+' alocado em '+pos,'#22c55e');
+  renderMain();
+  syncPneu(p);
+}
+
+function renderKmLote(mc){
+  const cavalos=Object.keys(CFG.pairs).sort();
+  const q=(KMQ||'').toLowerCase();
+  const list=cavalos.filter(c=>{
+    const carr=CFG.pairs[c]||'';
+    return !q || c.toLowerCase().includes(q) || carr.toLowerCase().includes(q);
+  });
+  const comKm=cavalos.filter(c=>CFG.hodos[c]>0).length;
+  mc.innerHTML=`
+  <div class="vb">
+    <div class="vh">
+      <div><div class="vt">📏 Lançar KM da Frota (em lote)</div>
+      <div class="vs">Digite o hodômetro atual de cada cavalo lendo do Gestran — a carreta parceira herda o KM. ${comKm}/${cavalos.length} já preenchidos.</div></div>
+    </div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-start">
+      <input id="kmlote-q" placeholder="🔍 Buscar placa (cavalo ou carreta)..." value="${KMQ||''}"
+        oninput="KMQ=this.value;renderMain()" autocomplete="off"
+        style="flex:1;min-width:240px;padding:11px 14px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--txt);font-size:14px">
+      <button class="btn" onclick="salvarKmLote()" style="background:var(--green);color:#fff;font-weight:700;padding:11px 20px;white-space:nowrap">💾 Salvar Tudo</button>
+    </div>
+
+    <details style="margin-bottom:16px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:0 14px">
+      <summary style="cursor:pointer;padding:12px 0;font-weight:600;font-size:13px;color:var(--txt2)">📋 Colar lista do Gestran (PLACA e KM)</summary>
+      <div style="padding:0 0 14px">
+        <div style="font-size:12px;color:var(--txt3);margin-bottom:8px;line-height:1.5">
+          Cole uma linha por veículo, no formato <code style="background:var(--bg);padding:1px 5px;border-radius:4px">PLACA KM</code> ou <code style="background:var(--bg);padding:1px 5px;border-radius:4px">PLACA,KM</code> ou <code style="background:var(--bg);padding:1px 5px;border-radius:4px">PLACA;KM</code>.<br>
+          Ex: <code style="background:var(--bg);padding:1px 5px;border-radius:4px">GDL 1255  531153</code> — funciona com cavalo ou carreta.
+        </div>
+        <textarea id="kmlote-paste" placeholder="GDL 1255  531153&#10;STR 8B50  198256&#10;..." rows="6"
+          style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-family:monospace;font-size:13px;resize:vertical"></textarea>
+        <button class="btn" onclick="aplicarKmColado()" style="margin-top:8px;background:var(--blue);color:#fff;font-weight:600;padding:9px 16px">↓ Preencher campos abaixo</button>
+        <span id="kmlote-paste-msg" style="margin-left:12px;font-size:13px"></span>
+      </div>
+    </details>
+
+    <div style="overflow-x:auto;border:1px solid var(--bd);border-radius:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <thead><tr style="background:var(--bg2);text-align:left">
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2)">Cavalo</th>
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2)">Carreta</th>
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2);width:180px">Hodômetro (KM)</th>
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2);width:90px">Pneus</th>
+        </tr></thead>
+        <tbody>
+        ${list.map(c=>{
+          const carr=CFG.pairs[c]||'—';
+          const h=CFG.hodos[c]||0;
+          const nPneus=P.filter(p=>p.status==='veiculo'&&(p.cavalo===c||(carr&&p.carreta===carr))).length;
+          const cid=c.replace(/[^A-Za-z0-9]/g,'_');
+          return `<tr style="border-top:1px solid var(--bd)">
+            <td style="padding:9px 14px;font-family:monospace;font-weight:700;color:var(--txt)">${c}</td>
+            <td style="padding:9px 14px;font-family:monospace;color:var(--txt2)">${carr}</td>
+            <td style="padding:7px 14px">
+              <input type="number" id="km_${cid}" data-cav="${c}" value="${h||''}" placeholder="0" min="0"
+                onchange="markKmRow('${cid}')"
+                style="width:150px;padding:8px 10px;border:1px solid ${h?'var(--green)':'var(--bd)'};border-radius:8px;background:var(--bg);color:var(--txt);font-size:14px;font-family:monospace">
+            </td>
+            <td style="padding:9px 14px;color:var(--txt3);text-align:center">${nPneus}</td>
+          </tr>`;
+        }).join('')||'<tr><td colspan="4" style="padding:28px;text-align:center;color:var(--txt3)">Nenhum veículo encontrado</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function markKmRow(cid){
+  const el=document.getElementById('km_'+cid);
+  if(el) el.style.borderColor=el.value&&parseInt(el.value)>0?'var(--accent)':'var(--bd)';
+}
+
+function aplicarKmColado(){
+  const txt=document.getElementById('kmlote-paste').value||'';
+  const lines=txt.split(/\n/).map(l=>l.trim()).filter(Boolean);
+  let ok=0, naoAchou=[];
+  const cavalos=Object.keys(CFG.pairs);
+  lines.forEach(line=>{
+    // separar placa (pode ter espaço no meio) do número final
+    const m=line.match(/^(.+?)[\s,;]+([\d.]+)\s*$/);
+    if(!m) return;
+    let placa=m[1].trim().toUpperCase().replace(/\s+/g,' ');
+    const km=parseInt(m[2].replace(/\./g,''))||0;
+    // achar cavalo direto ou via carreta
+    let cav=cavalos.find(c=>c.toUpperCase()===placa);
+    if(!cav){
+      const par=Object.entries(CFG.pairs).find(([c,t])=>(t||'').toUpperCase()===placa);
+      if(par) cav=par[0];
+    }
+    // tentar sem espaço (GDL1255 vs GDL 1255)
+    if(!cav){
+      const pn=placa.replace(/\s/g,'');
+      cav=cavalos.find(c=>c.toUpperCase().replace(/\s/g,'')===pn);
+      if(!cav){const par=Object.entries(CFG.pairs).find(([c,t])=>(t||'').toUpperCase().replace(/\s/g,'')===pn);if(par)cav=par[0];}
+    }
+    if(cav){
+      const cid=cav.replace(/[^A-Za-z0-9]/g,'_');
+      const el=document.getElementById('km_'+cid);
+      if(el){el.value=km;markKmRow(cid);ok++;}
+    } else naoAchou.push(placa);
+  });
+  const msg=document.getElementById('kmlote-paste-msg');
+  msg.innerHTML=`<span style="color:var(--green)">✓ ${ok} preenchidos</span>`+(naoAchou.length?` <span style="color:var(--accent)">· ${naoAchou.length} não encontrados: ${naoAchou.slice(0,5).join(', ')}${naoAchou.length>5?'...':''}</span>`:'');
+}
+
+function salvarKmLote(){
+  let salvos=0, erros=0;
+  const hodosParaSync=[], pneusParaSync=[];
+  document.querySelectorAll('input[id^="km_"]').forEach(el=>{
+    const cav=el.dataset.cav;
+    const v=parseInt(el.value)||0;
+    if(v<=0) return;
+    const old=CFG.hodos[cav]||0;
+    if(v<old){erros++;return;} // não deixa diminuir
+    CFG.hodos[cav]=v;
+    hodosParaSync.push([cav,v]);
+    // atualizar kmVida dos pneus
+    const carr=CFG.pairs[cav];
+    P.filter(p=>p.status==='veiculo'&&(p.cavalo===cav||(carr&&p.carreta===carr))).forEach(p=>{
+      const kmNovo=Math.max(0,v-(p.kmInst||0));
+      if(kmNovo>(p.kmVida||0)){ p.kmVida=kmNovo; pneusParaSync.push(p); }
+    });
+    salvos++;
+  });
+  if(salvos>0){toast(`✓ ${salvos} hodômetros salvos`+(erros?` (${erros} ignorados: KM menor que atual)`:''),'#22c55e');}
+  else toast('Nenhum KM válido para salvar','#eab308');
+  renderMain();
+  (async()=>{
+    for(const [cav,v] of hodosParaSync){ await syncHodometro(cav,v); }
+    for(const p of pneusParaSync){ await syncPneu(p); }
+  })();
+}
+
+function renderEngate(mc){
+  const rows=PARES_DEFAULT.map((par,i)=>{
+    const cavAtual=par[0];
+    const carrAtual=CFG.pairs[cavAtual]||par[1];
+    const isDiff=carrAtual!==par[1];
+    return`<tr><td><span class="plate">${cavAtual}</span></td>
+      <td><span class="plate" style="background:${isDiff?'#1a1a00':'#0d2547'};border-color:${isDiff?'#5a5a00':'#27457b'}">${carrAtual}</span></td>
+      <td style="font-size:11px;color:var(--txt3)">${par[1]}</td>
+      <td><span class="badge ${isDiff?'yellow':'green'}">${isDiff?'Alterado':'Padrão'}</span></td>
+      <td><button class="btn sm" onclick="editEngate(${i})">✏️ Trocar</button>
+          ${isDiff?`<button class="btn sm" onclick="resetEngate(${i})">↩ Reset</button>`:''}</td>
+    </tr>`;
+  });
+  mc.innerHTML=`<div class="vh"><div><h1>🔗 Engates / Pares</h1><div class="sub">Gerenciamento de conjuntos cavalo+carreta</div></div>
+  <button class="btn" onclick="importEngates()">📥 Importar Lista</button></div>
+  <div class="vb">
+  <div class="card"><div class="ch"><h2>Pares Atuais</h2><span class="hint">Clique ✏️ para trocar</span></div>
+  <div class="tbl"><table><thead><tr><th>Cavalo</th><th>Carreta Atual</th><th>Carreta Padrão</th><th>Status</th><th>Ação</th></tr></thead>
+  <tbody>${rows.join('')}</tbody></table></div></div>
+  </div>`;
+}
+function editEngate(idx){
+  const par=PARES_DEFAULT[idx];
+  const cav=par[0];
+  const curr=CFG.pairs[cav]||par[1];
+  const nova=prompt(`Trocar carreta de ${cav}:\nAtual: ${curr}\nNova carreta (ou deixe em branco para cancelar):`,'');
+  if(!nova||!nova.trim()) return;
+  const novaN=nova.trim().toUpperCase();
+  // check if nova carreta exists in pairs
+  const found=PARES_DEFAULT.some(p=>p[1]===novaN)||novaN;
+  CFG.pairs[cav]=novaN;
+  toast('Engate atualizado: '+cav+' → '+novaN,'#22c55e');nav('engate');
+  syncAddPar(cav, novaN);
+}
+function resetEngate(idx){
+  const par=PARES_DEFAULT[idx];
+  CFG.pairs[par[0]]=par[1];
+  toast('Par resetado para padrão','#38bdf8');nav('engate');
+  syncAddPar(par[0], par[1]);
+}
+function importEngates(){
+  const txt=prompt('Cole a lista de pares no formato:\nCAVALO,CARRETA\nUm par por linha:');
+  if(!txt) return;
+  let cnt=0; const toSync=[];
+  txt.split('\n').forEach(line=>{
+    const parts=line.trim().split(',');
+    if(parts.length===2){
+      const c=parts[0].trim().toUpperCase();
+      const t=parts[1].trim().toUpperCase();
+      if(c&&t){CFG.pairs[c]=t;cnt++;toSync.push([c,t]);}
+    }
+  });
+  toast(`${cnt} pares importados`,'#22c55e');nav('engate');
+  toSync.forEach(([c,t])=>syncAddPar(c,t));
+}
+
+// ============================
+//  CADASTRO
+// ============================
+// ============================
+//  ADICIONAR PNEUS EM LOTE
+// ============================
+let LOTE_PREVIEW = [];
+let LOTE_DESTINO = 'almox';
+
+// Validação compartilhada — recebe array de linhas já quebradas em [fogo,fabricante,modelo,dot,sulcoStr,valorStr]
+function validarLinhasLote_(linhasPartes){
+  const validos = [], invalidos = [];
+  let provisoriosGerados = 0;
+  const usadosAntes = P.filter(p=>isSemFogo(p)).map(p=>parseInt(p.fogo.replace('PROV-',''),10)).filter(n=>!isNaN(n));
+  let proxProv = (usadosAntes.length?Math.max(...usadosAntes):0)+1;
+  linhasPartes.forEach(({partes, linha, origem}) => {
+    if(partes.length < 6){ invalidos.push({linha, texto: origem, motivo: 'Faltam campos (precisa de 6: Fogo, Fabricante, Modelo, DOT, Sulco, Valor — Fogo pode ficar vazio)'}); return; }
+    let [fogo, fabricante, modelo, dot, sulcoStr, valorStr] = partes.map(p=>String(p==null?'':p).trim());
+    if(!fogo){
+      fogo = 'PROV-'+String(proxProv).padStart(4,'0');
+      proxProv++; provisoriosGerados++;
+    } else {
+      if(getPneu(fogo)){ invalidos.push({linha, texto: origem, motivo: 'Fogo '+fogo+' já existe no sistema'}); return; }
+      if(validos.find(v=>v.fogo===fogo)){ invalidos.push({linha, texto: origem, motivo: 'Fogo '+fogo+' duplicado nesta mesma lista'}); return; }
+    }
+    const sulco = parseFloat(String(sulcoStr).replace(',','.')) || 0;
+    if(sulco<=0){ invalidos.push({linha, texto: origem, motivo: 'Sulco inválido'}); return; }
+    if(sulco>30){ invalidos.push({linha, texto: origem, motivo: 'Sulco '+sulco+'mm parece alto demais'}); return; }
+    const valor = parseFloat(String(valorStr||'0').replace(/[^\d,.-]/g,'').replace(',','.')) || 0;
+    validos.push({ fogo, fabricante: fabricante||'', modelo: modelo||'', dot: dot||'', sulcoMenor: sulco, valorU: valor, semFogo: fogo.startsWith('PROV-') });
+  });
+  return { validos, invalidos, provisoriosGerados };
+}
+
+function parseLotePneus_(txt){
+  const linhas = (txt||'').split('\n').map(l=>l.trim()).filter(Boolean);
+  const linhasPartes = linhas.map((linha, idx) => ({
+    partes: linha.split(/[,\t]/).map(p=>p.trim()),
+    linha: idx+1,
+    origem: linha
+  }));
+  return validarLinhasLote_(linhasPartes);
+}
+
+// Lê um arquivo .xlsx enviado pelo usuário e devolve as mesmas linhas-partes
+function lerExcelLote_(arrayBuffer){
+  const wb = XLSX.read(arrayBuffer, {type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:''});
+  if(!rows.length) return [];
+  // detecta se a 1ª linha é cabeçalho (contém "fogo" em alguma célula, case-insensitive)
+  const primeira = rows[0].map(c=>String(c).toLowerCase());
+  const temCabecalho = primeira.some(c=>c.includes('fogo')||c.includes('fabricante'));
+  const dataRows = temCabecalho ? rows.slice(1) : rows;
+  return dataRows
+    .filter(r=>r.some(c=>String(c).trim()!==''))
+    .map((r, idx) => ({
+      partes: [r[0], r[1], r[2], r[3], r[4], r[5]],
+      linha: idx+1+(temCabecalho?1:0),
+      origem: r.slice(0,6).join(' | ')
+    }));
+}
+
+function baixarModeloLote(){
+  const dados = [
+    ['Fogo','Fabricante','Modelo','DOT','Sulco','Valor'],
+    ['9001','GOODYEAR','KMAX S','4523',17.05,2207.80],
+    ['','PIRELLI','FR01','2224',16.00,2107.80],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(dados);
+  ws['!cols'] = [{wch:12},{wch:14},{wch:14},{wch:8},{wch:8},{wch:10}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pneus');
+  XLSX.writeFile(wb, 'modelo_adicionar_pneus.xlsx');
+}
+
+function handleExcelLote(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const linhasPartes = lerExcelLote_(new Uint8Array(e.target.result));
+      const resultado = validarLinhasLote_(linhasPartes);
+      LOTE_PREVIEW = resultado.validos;
+      renderPreviewLote_(resultado);
+      document.getElementById('lote-arquivo-nome').textContent = '📎 '+file.name+' ('+linhasPartes.length+' linha(s) lida(s))';
+    }catch(err){
+      toast('⛔ Erro ao ler o arquivo — confira se é um .xlsx válido', '#ef4444');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderPreviewLote_({validos, invalidos, provisoriosGerados}){
+  const box = document.getElementById('lote-preview-box');
+  let html = '';
+  if(validos.length){
+    html += `<div style="color:var(--green);font-weight:700;font-size:13px;margin-bottom:6px">✓ ${validos.length} pneu(s) prontos para importar${provisoriosGerados?` <span style="color:var(--accent)">(${provisoriosGerados} sem numeração — código provisório)</span>`:''}</div>`;
+    html += '<div style="max-height:180px;overflow-y:auto;font-family:monospace;font-size:11px;color:var(--txt2);line-height:1.6">';
+    html += validos.map(v=>`${v.semFogo?'<span style="color:var(--accent)">'+v.fogo+' ⚠️</span>':v.fogo} · ${v.fabricante} ${v.modelo} · DOT ${v.dot} · ${v.sulcoMenor}mm · ${fr(v.valorU)}`).join('<br>');
+    html += '</div>';
+  }
+  if(invalidos.length){
+    html += `<div style="color:var(--red);font-weight:700;font-size:13px;margin:10px 0 6px">⛔ ${invalidos.length} linha(s) com problema</div>`;
+    html += '<div style="max-height:140px;overflow-y:auto;font-size:11px;color:var(--red)">';
+    html += invalidos.map(v=>`Linha ${v.linha}: ${v.motivo} <span style="color:var(--txt3)">(${v.texto})</span>`).join('<br>');
+    html += '</div>';
+  }
+  if(!validos.length && !invalidos.length){
+    html = '<div style="color:var(--txt3);font-size:12px">Cole a lista ou envie um Excel, depois clique em Pré-visualizar</div>';
+  }
+  box.innerHTML = html;
+  document.getElementById('lote-import-btn').disabled = validos.length===0;
+}
+
+function previewLote(){
+  const txt = document.getElementById('lote-paste').value;
+  const resultado = parseLotePneus_(txt);
+  LOTE_PREVIEW = resultado.validos;
+  renderPreviewLote_(resultado);
+}
+
+function setLoteDestino(v){ LOTE_DESTINO = v; }
+
+async function importarLote(){
+  if(!LOTE_PREVIEW.length){ toast('Nada para importar — pré-visualize primeiro', '#eab308'); return; }
+  const btn = document.getElementById('lote-import-btn');
+  btn.disabled = true; btn.textContent = 'Importando...';
+  const criados = [];
+  LOTE_PREVIEW.forEach(v=>{
+    const pneu = {
+      id: uid(), fogo: v.fogo, fabricante: v.fabricante, modelo: v.modelo, dot: v.dot,
+      vida: VIDAS[0], dimensao: '295/80R22,5', bandaRodagem: '',
+      sulcoMenor: v.sulcoMenor, sulcos: [v.sulcoMenor,v.sulcoMenor,v.sulcoMenor,v.sulcoMenor],
+      kmVida: 0, kmTotal: 0, kmInst: 0, valorU: v.valorU, valorTotal: v.valorU,
+      almoxarifado: 'PNEUS', status: LOTE_DESTINO, cavalo: null, carreta: null, posicao: null,
+      fornecedor: '', numDoc: '', dataEmissao: td(), dataCadastro: td()
+    };
+    P.push(pneu);
+    addM(pneu.fogo, 'Cadastro (lote)', '', '', '', pneu.sulcoMenor, 0);
+    criados.push(pneu);
+  });
+  toast(`✓ ${criados.length} pneu(s) cadastrados em ${LOTE_DESTINO==='almox'?'Almoxarifado':LOTE_DESTINO==='reforma'?'Reforma':'Sucata'}`, '#22c55e');
+  document.getElementById('lote-paste').value = '';
+  LOTE_PREVIEW = [];
+  nav('todos');
+  // sincroniza cada um com o backend (em paralelo)
+  for(const p of criados){ await syncPneu(p); }
+}
+
+// ============================
+//  PNEUS SEM FOGO (numeração pendente)
+// ============================
+let FOGO_ALVO = null;
+
+function renderSemFogo(mc){
+  const lista = P.filter(isSemFogo).sort((a,b)=>a.fogo.localeCompare(b.fogo));
+  mc.innerHTML = `
+  <div class="vb">
+    <div class="vh">
+      <div><div class="vt">🏷️ Pneus Sem Fogo (${lista.length})</div>
+      <div class="vs">Pneus novos cadastrados antes de receber o número de fogo definitivo. Assim que a etiqueta chegar, atribua o número real aqui.</div></div>
+    </div>
+    ${lista.length ? `
+    <div style="overflow-x:auto;border:1px solid var(--bd);border-radius:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <thead><tr style="background:var(--bg2);text-align:left">
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2)">Código Provisório</th>
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2)">Fabricante</th>
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2)">Modelo</th>
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2)">DOT</th>
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2)">Status</th>
+          <th style="padding:11px 14px;font-weight:700;color:var(--txt2)"></th>
+        </tr></thead>
+        <tbody>
+        ${lista.map(p=>`<tr style="border-top:1px solid var(--bd)">
+          <td style="padding:9px 14px;font-family:monospace;font-weight:700;color:var(--accent)">${p.fogo}</td>
+          <td style="padding:9px 14px">${p.fabricante||'—'}</td>
+          <td style="padding:9px 14px">${p.modelo||'—'}</td>
+          <td style="padding:9px 14px;color:var(--txt3)">${p.dot||'—'}</td>
+          <td style="padding:9px 14px">${({'veiculo':'Em Veículo','almox':'Almoxarifado','reforma':'Reforma','sucata':'Sucata'})[p.status]||p.status}</td>
+          <td style="padding:9px 14px;text-align:right">
+            <button class="btn" onclick="abrirAtribuirFogo('${p.fogo}')" style="background:var(--green);color:#fff;font-weight:600;padding:6px 14px;font-size:12px">🏷️ Atribuir Fogo</button>
+          </td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : `<div style="padding:40px;text-align:center;color:var(--txt3)">Nenhum pneu aguardando numeração 🎉</div>`}
+  </div>`;
+}
+
+function abrirAtribuirFogo(provFogo){
+  const p = getPneu(provFogo); if(!p) return;
+  FOGO_ALVO = provFogo;
+  document.getElementById('fogo-info').textContent = p.fabricante+' '+p.modelo+' · DOT '+(p.dot||'—')+' · atualmente '+provFogo;
+  document.getElementById('fogo-input').value = '';
+  document.getElementById('fogo-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('fogo-input').focus(), 50);
+}
+function fecharAtribuirFogo(){ document.getElementById('fogo-modal').classList.remove('open'); FOGO_ALVO=null; }
+
+async function confirmarAtribuirFogo(){
+  if(!FOGO_ALVO) return;
+  const provAlvo = FOGO_ALVO; // captura antes de fechar o modal (que zera FOGO_ALVO)
+  const novoFogo = (document.getElementById('fogo-input').value||'').trim();
+  if(!novoFogo){ toast('Digite o número de fogo', '#eab308'); return; }
+  if(getPneu(novoFogo)){ toast('⛔ Fogo '+novoFogo+' já existe no sistema', '#ef4444'); return; }
+
+  const antigo = getPneu(provAlvo); if(!antigo) return;
+  const novo = Object.assign({}, antigo, { fogo: novoFogo, id: novoFogo });
+
+  P = P.filter(p=>p.fogo!==provAlvo);
+  P.push(novo);
+  addM(novoFogo, 'Atribuição de fogo (era '+provAlvo+')', novo.cavalo, novo.carreta, novo.posicao, novo.sulcoMenor, novo.kmVida);
+
+  fecharAtribuirFogo();
+  toast('✓ '+provAlvo+' agora é o fogo '+novoFogo, '#22c55e');
+  nav('sem-fogo');
+
+  // no backend: cria a linha nova e apaga a provisória
+  await syncPneu(novo);
+  await syncDeletePneu(provAlvo);
+}
+
+function renderAddLote(mc){
+  mc.innerHTML = `
+  <div class="vb">
+    <div class="vh">
+      <div><div class="vt">📥 Adicionar Pneus (em lote)</div>
+      <div class="vs">Envie um Excel com os pneus novos, ou cole a lista manualmente.</div></div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+      <span style="font-size:13px;color:var(--txt2);font-weight:600">Destino dos pneus:</span>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--txt2);cursor:pointer">
+        <input type="radio" name="lote-destino" value="almox" checked onchange="setLoteDestino(this.value)"> 📦 Almoxarifado
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--txt2);cursor:pointer">
+        <input type="radio" name="lote-destino" value="reforma" onchange="setLoteDestino(this.value)"> 🔧 Reforma
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--txt2);cursor:pointer">
+        <input type="radio" name="lote-destino" value="sucata" onchange="setLoteDestino(this.value)"> 🗑️ Sucata
+      </label>
+    </div>
+
+    <div class="card" style="padding:18px;margin-bottom:16px;border:1.5px dashed var(--bd);border-radius:12px;background:var(--bg2)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--txt);margin-bottom:4px">📊 Enviar planilha Excel</div>
+          <div style="font-size:12px;color:var(--txt3);line-height:1.5">
+            Colunas na ordem: <b>Fogo, Fabricante, Modelo, DOT, Sulco, Valor</b> (pode ter cabeçalho ou não).<br>
+            Fogo vazio = pneu novo sem numeração (vira código provisório automaticamente).
+          </div>
+        </div>
+        <button class="btn" onclick="baixarModeloLote()" style="background:var(--bg);border:1px solid var(--bd);color:var(--txt2);padding:7px 12px;font-size:12px;white-space:nowrap">⬇️ Baixar modelo</button>
+      </div>
+      <div style="margin-top:12px">
+        <label for="lote-excel-input" style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:var(--blue);color:#fff;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer">
+          📁 Escolher arquivo .xlsx
+        </label>
+        <input type="file" id="lote-excel-input" accept=".xlsx,.xls" style="display:none" onchange="handleExcelLote(this)">
+        <span id="lote-arquivo-nome" style="margin-left:10px;font-size:12px;color:var(--txt3)"></span>
+      </div>
+    </div>
+
+    <details style="margin-bottom:14px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:0 14px">
+      <summary style="cursor:pointer;padding:12px 0;font-weight:600;font-size:13px;color:var(--txt2)">✏️ Ou colar lista manualmente</summary>
+      <div style="padding:0 0 14px">
+        <div style="font-size:12px;color:var(--txt3);margin-bottom:8px;line-height:1.5">
+          Uma linha por pneu, separado por vírgula: <code style="background:var(--bg);padding:1px 5px;border-radius:4px">Fogo, Fabricante, Modelo, DOT, Sulco, Valor</code><br>
+          Ex: <code style="background:var(--bg);padding:1px 5px;border-radius:4px">9001, GOODYEAR, KMAX S, 4523, 17.05, 2207.80</code><br>
+          <span style="color:var(--accent)">💡 Fogo vazio = pneu novo sem numeração</span> (gera código provisório PROV-0001).
+        </div>
+        <textarea id="lote-paste" placeholder="9001, GOODYEAR, KMAX S, 4523, 17.05, 2207.80&#10;, PIRELLI, FR01, 2224, 16.00, 2107.80  (sem fogo = pneu novo)&#10;..." rows="6"
+          style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-family:monospace;font-size:13px;resize:vertical"></textarea>
+        <button class="btn" onclick="previewLote()" style="margin-top:8px;background:var(--blue);color:#fff;font-weight:600;padding:9px 16px">👁️ Pré-visualizar texto colado</button>
+      </div>
+    </details>
+
+    <div id="lote-preview-box" style="margin-top:6px;margin-bottom:12px;padding:12px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;min-height:40px">
+      <div style="color:var(--txt3);font-size:12px">Cole a lista ou envie um Excel, depois clique em Pré-visualizar</div>
+    </div>
+
+    <button class="btn" id="lote-import-btn" onclick="importarLote()" disabled style="background:var(--green);color:#fff;font-weight:700;padding:10px 20px;opacity:.5">✓ Importar Tudo</button>
+  </div>`;
+}
+
+function renderCadastro(mc,fogoEdit=null){
+  const pe=fogoEdit?getPneu(fogoEdit):null;
+  const v=f=>pe?pe[f]||'':'';
+  const fabList=[...new Set([...FABS,...P.map(p=>p.fabricante)])].sort();
+  mc.innerHTML=`<div class="vh"><div><h1>${pe?'✏️ Editar':'➕ Cadastro'} de Pneu</h1><div class="sub">${pe?'Fogo '+fogoEdit:'Novo pneu'}</div></div>
+  <button class="btn" onclick="nav('todos')">✕ Cancelar</button></div>
+  <div class="vb"><form onsubmit="submitCad(event,'${fogoEdit||''}')">
+  <div class="card"><div class="ch"><h2>📋 Identificação</h2></div><div class="cb">
+  <div class="form-g">
+    <div class="fg2"><label>Nº de Fogo</label><input name="fogo" value="${v('fogo')}" placeholder="deixe em branco se for pneu novo sem numeração" ${pe?'readonly':''}><div class="hint" style="font-size:11px;color:var(--txt3);margin-top:3px">Em branco = pneu novo aguardando numeração (gera código provisório)</div></div>
+    <div class="fg2"><label>DOT</label><input name="dot" value="${v('dot')}" placeholder="ex: 2223"></div>
+    <div class="fg2"><label>Fabricante *</label>
+      <select name="fabricante" required onchange="updModelos(this.value)">
+        <option value="">Selecione...</option>${fabList.map(f=>`<option value="${f}" ${v('fabricante')===f?'selected':''}>${f}</option>`).join('')}
+      </select>
+    </div>
+    <div class="fg2"><label>Modelo *</label>
+      <select name="modelo" required id="sel-mod">
+        <option value="">Selecione fabricante...</option>
+        ${pe?[...(MODS_FAB[pe.fabricante]||[]),...P.filter(p=>p.fabricante===pe.fabricante).map(p=>p.modelo)].filter((v,i,a)=>a.indexOf(v)===i).map(m=>`<option value="${m}" ${v('modelo')===m?'selected':''}>${m}</option>`).join(''):''}
+      </select>
+    </div>
+    <div class="fg2"><label>Dimensão</label>
+      <select name="dimensao">${DIMS.map(d=>`<option value="${d}" ${v('dimensao')===d?'selected':''}>${d}</option>`).join('')}</select>
+    </div>
+    <div class="fg2"><label>Vida</label>
+      <select name="vida">${VIDAS.map(vi=>`<option value="${vi}" ${v('vida')===vi?'selected':''}>${vi}</option>`).join('')}</select>
+    </div>
+  </div>
+  </div></div>
+  <div class="card" style="margin-top:12px"><div class="ch"><h2>📏 Sulcos e Pressão</h2></div><div class="cb">
+  <div class="form-g g3c">
+    <div class="fg2"><label>Menor Sulco (mm) *</label><input name="sulcoMenor" type="number" step="0.1" min="0" max="25" required value="${v('sulcoMenor')||''}"></div>
+    <div class="fg2"><label>Sulco 1</label><input name="s1" type="number" step="0.1" value="${pe?pe.sulcos[0]||'':''}"></div>
+    <div class="fg2"><label>Sulco 2</label><input name="s2" type="number" step="0.1" value="${pe?pe.sulcos[1]||'':''}"></div>
+    <div class="fg2"><label>Sulco 3</label><input name="s3" type="number" step="0.1" value="${pe?pe.sulcos[2]||'':''}"></div>
+    <div class="fg2"><label>Sulco 4</label><input name="s4" type="number" step="0.1" value="${pe?pe.sulcos[3]||'':''}"></div>
+    <div class="fg2"><label>Pressão Rec. (psi)</label><input name="pressao" type="number" value="${v('pressao')||110}"></div>
+  </div>
+  </div></div>
+  <div class="card" style="margin-top:12px"><div class="ch"><h2>🚦 Status e Localização</h2></div><div class="cb">
+  <div class="form-g">
+    <div class="fg2"><label>Status *</label>
+      <select name="status" onchange="togVehFlds(this.value)" required>
+        <option value="almox" ${v('status')==='almox'||!pe?'selected':''}>📦 Almoxarifado</option>
+        <option value="veiculo" ${v('status')==='veiculo'?'selected':''}>🚛 Em Veículo</option>
+        <option value="reforma" ${v('status')==='reforma'?'selected':''}>🔧 Reforma</option>
+        <option value="sucata" ${v('status')==='sucata'?'selected':''}>🗑️ Sucata</option>
+      </select>
+    </div>
+    <div class="fg2"><label>Almoxarifado</label>
+      <select name="almoxarifado">${ALMOXS.map(a=>`<option value="${a}" ${v('almoxarifado')===a?'selected':''}>${a}</option>`).join('')}</select>
+    </div>
+    <div class="fg2" id="fld-cav" style="${pe&&pe.status==='veiculo'?'':'display:none'}"><label>Cavalo</label>
+      <input name="cavalo" list="dl-cav" value="${v('cavalo')}"><datalist id="dl-cav">${PARES_DEFAULT.map(p=>`<option value="${p[0]}">`).join('')}</datalist>
+    </div>
+    <div class="fg2" id="fld-carr" style="${pe&&pe.status==='veiculo'?'':'display:none'}"><label>Carreta</label>
+      <input name="carreta" list="dl-carr" value="${v('carreta')}"><datalist id="dl-carr">${PARES_DEFAULT.map(p=>`<option value="${p[1]}">`).join('')}</datalist>
+    </div>
+    <div class="fg2" id="fld-pos" style="${pe&&pe.status==='veiculo'?'':'display:none'}"><label>Posição</label>
+      <select name="posicao"><option value="">Selecione...</option>
+        ${Object.keys(POS_LBL).map(p=>`<option value="${p}" ${v('posicao')===p?'selected':''}>${p} – ${POS_LBL[p]}</option>`).join('')}
+      </select>
+    </div>
+    <div class="fg2"><label>KM Rodado</label><input name="kmRodado" type="number" value="${v('kmVida')||0}"></div>
+  </div>
+  </div></div>
+  <div class="card" style="margin-top:12px"><div class="ch"><h2>💰 Valores</h2></div><div class="cb">
+  <div class="form-g">
+    <div class="fg2"><label>Tipo Aquisição</label>
+      <select name="tipoAq">${TIPOS_AQ.map(t=>`<option value="${t}">${t}</option>`).join('')}</select>
+    </div>
+    <div class="fg2"><label>Data Emissão</label><input name="dataEmissao" type="date" value="${v('dataEmissao')||td()}"></div>
+    <div class="fg2"><label>Fornecedor</label><input name="fornecedor" value="${v('fornecedor')}"></div>
+    <div class="fg2"><label>Nº Documento</label><input name="numDoc" value="${v('numDoc')}"></div>
+    <div class="fg2"><label>Valor Unitário (R$)</label><input name="valorU" type="number" step="0.01" value="${v('valorU')||''}"></div>
+    <div class="fg2"><label>Banda de Rodagem</label><input name="banda" value="${v('bandaRodagem')}"></div>
+  </div>
+  </div></div>
+  <div style="display:flex;gap:8px;margin-top:16px;padding-bottom:40px">
+    <button type="submit" class="btn primary" style="flex:1;justify-content:center;padding:12px">💾 ${pe?'Salvar':'Cadastrar'}</button>
+    ${pe?`<button type="button" class="btn danger" onclick="delPneu('${fogoEdit}')">🗑️</button>`:''}
+  </div>
+  </form></div>`;
+  if(pe) updModelos(pe.fabricante);
+}
+function updModelos(fab){
+  const s=document.getElementById('sel-mod'); if(!s) return;
+  const mods=[...(MODS_FAB[fab]||[]),...P.filter(p=>p.fabricante===fab).map(p=>p.modelo)].filter((v,i,a)=>a.indexOf(v)===i).sort();
+  s.innerHTML=`<option value="">Selecione...</option>`+mods.map(m=>`<option value="${m}">${m}</option>`).join('');
+}
+function togVehFlds(v){['fld-cav','fld-carr','fld-pos'].forEach(id=>{const el=document.getElementById(id);if(el) el.style.display=v==='veiculo'?'':'none';});}
+function submitCad(e,fogoEdit){
+  e.preventDefault();
+  const fd=new FormData(e.target); const d=Object.fromEntries(fd);
+  // ─── VALIDAÇÕES ───
+  const erros=[];
+  if(!d.fabricante) erros.push('Fabricante é obrigatório');
+  if(!d.modelo) erros.push('Modelo é obrigatório');
+  // Sem fogo informado = pneu novo aguardando numeração → gera código provisório
+  const fogo=(d.fogo||'').trim() || proximoFogoProvisorio();
+  // Fogo duplicado
+  if(!fogoEdit&&getPneu(fogo)){
+    const ex=getPneu(fogo);
+    const ondeMap={veiculo:'em veículo ('+(ex.cavalo||ex.carreta||'')+')',almox:'no almoxarifado',reforma:'em reforma',sucata:'na sucata'};
+    toast('⛔ Fogo '+fogo+' já existe ('+(ondeMap[ex.status]||ex.status)+')','#ef4444');return;
+  }
+  // Sulco
+  const sul=parseFloat(d.sulcoMenor)||0;
+  if(sul<=0) erros.push('Menor sulco deve ser maior que zero');
+  if(sul>30) erros.push('Sulco '+sul+'mm parece alto demais (máx ~25mm)');
+  // KM
+  const kmR=parseFloat(d.kmRodado)||0;
+  if(kmR<0) erros.push('KM rodado não pode ser negativo');
+  // Validação de alocação em veículo
+  if(d.status==='veiculo'){
+    if(!d.cavalo&&!d.carreta) erros.push('Informe o cavalo ou a carreta onde o pneu está montado');
+    if(!d.posicao) erros.push('Informe a posição do pneu no veículo');
+    // Posição já ocupada?
+    if(d.posicao){
+      const alvo=d.carreta||d.cavalo;
+      const isCarr=!!d.carreta;
+      const ocupado=P.find(p=>p.status==='veiculo'&&p.fogo!==fogoEdit&&p.posicao===d.posicao&&(isCarr?p.carreta===d.carreta:p.cavalo===d.cavalo));
+      if(ocupado) erros.push('Posição '+d.posicao+' já ocupada pelo fogo '+ocupado.fogo+' em '+alvo+' (remova-o antes)');
+    }
+    // Cavalo/carreta existe?
+    if(d.cavalo&&!CFG.pairs[d.cavalo]&&!PARES_DEFAULT.find(p=>p[0]===d.cavalo)) erros.push('Cavalo '+d.cavalo+' não está cadastrado na frota');
+  }
+  if(erros.length){
+    toast('⛔ '+erros[0],'#ef4444');
+    if(erros.length>1) setTimeout(()=>toast('+ '+(erros.length-1)+' outro(s) problema(s)','#eab308'),1800);
+    return;
+  }
+  // mantém compat: d.fogo usado abaixo
+  d.fogo=fogo;
+  const sulcos=[parseFloat(d.s1||sul)||sul,parseFloat(d.s2||sul)||sul,parseFloat(d.s3||sul)||sul,parseFloat(d.s4||sul)||sul];
+  const pneu=fogoEdit?getPneu(fogoEdit):{id:uid(),dataCadastro:td()};
+  Object.assign(pneu,{fogo:d.fogo,dot:d.dot||'',fabricante:d.fabricante,modelo:d.modelo,dimensao:d.dimensao||'295/80R22,5',vida:d.vida||VIDAS[0],bandaRodagem:d.banda||'',sulcoMenor:sul,sulcos,kmVida:parseFloat(d.kmRodado)||0,kmTotal:parseFloat(d.kmRodado)||0,kmInst:0,valorU:parseFloat(d.valorU)||0,valorTotal:parseFloat(d.valorU)||0,almoxarifado:d.almoxarifado||'PNEUS',status:d.status,cavalo:d.status==='veiculo'?d.cavalo||null:null,carreta:d.status==='veiculo'?d.carreta||null:null,posicao:d.status==='veiculo'?d.posicao||null:null,fornecedor:d.fornecedor||'',numDoc:d.numDoc||'',dataEmissao:d.dataEmissao||td()});
+  if(!fogoEdit) P.push(pneu);
+  addM(pneu.fogo,fogoEdit?'Atualização':'Cadastro',pneu.cavalo,pneu.carreta,pneu.posicao,pneu.sulcoMenor,pneu.kmVida);
+  toast(fogoEdit?'Atualizado!':'Cadastrado!','#22c55e');nav('todos');
+  syncPneu(pneu);
+}
+function delPneu(fogo){
+  if(!confirm('Excluir pneu '+fogo+'?')) return;
+  P=P.filter(p=>p.fogo!==fogo);toast('Excluído','#ef4444');nav('todos');
+  syncDeletePneu(fogo);
+}
+
+// ============================
+//  DETALHE DRAWER
+// ============================
+function openDet(fogo){
+  const p=getPneu(fogo); if(!p) return;
+  const kmR=getKmPneu(p);
+  const cpkV=cpk({...p,kmVida:kmR});
+  const pct=Math.max(4,Math.min(100,(p.sulcoMenor/17.05)*100));
+  const barC=sst(p.sulcoMenor)==='sg'?'var(--green)':sst(p.sulcoMenor)==='sy'?'var(--yellow)':'var(--red)';
+  const stMap={'veiculo':'Em Veículo','almox':'Almoxarifado','reforma':'Reforma','sucata':'Sucata'};
+  document.getElementById('drh').innerHTML=`
+    <div><div style="font-size:22px;font-weight:700">Fogo ${p.fogo}</div><div style="font-size:12px;color:var(--txt3);margin-top:2px">${p.vida}</div></div>
+    <div style="display:flex;align-items:center;gap:8px">${sbadge(p.sulcoMenor)}<button class="xb" onclick="closeDet()">×</button></div>`;
+  document.getElementById('drb').innerHTML=`
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:700;font-size:15px">${p.sulcoMenor} mm</span><span style="color:var(--txt3)">${Math.round(pct)}% vida restante</span></div>
+      <div class="wb"><i style="width:${pct}%;background:${barC}"></i></div>
+    </div>
+    <div class="fgrid">
+      <div class="fc"><div class="k">Fabricante</div><div class="v">${p.fabricante}</div></div>
+      <div class="fc"><div class="k">Modelo</div><div class="v">${p.modelo}</div></div>
+      <div class="fc"><div class="k">Dimensão</div><div class="v" style="font-family:monospace">${p.dimensao||'—'}</div></div>
+      <div class="fc"><div class="k">Status</div><div class="v">${stMap[p.status]||p.status}</div></div>
+      ${p.status==='veiculo'?`<div class="fc"><div class="k">Veículo</div><div class="v" style="font-family:monospace">${p.cavalo||p.carreta||'—'}</div></div><div class="fc"><div class="k">Posição</div><div class="v" style="font-family:monospace">${p.posicao||'—'} – ${POS_LBL[p.posicao]||''}</div></div>`:''}
+      <div class="fc"><div class="k">KM Rodado</div><div class="v" style="font-family:monospace">${fkm(kmR)}</div></div>
+      <div class="fc"><div class="k">CPK</div><div class="v" style="font-family:monospace;color:var(--a2)">${cpkV>0?'R$ '+cpkV.toFixed(4):'—'}</div></div>
+      <div class="fc"><div class="k">Valor</div><div class="v" style="font-family:monospace">${fr(p.valorU)}</div></div>
+      <div class="fc"><div class="k">Fornecedor</div><div class="v" style="font-size:12px">${p.fornecedor||'—'}</div></div>
+      <div class="fc"><div class="k">NF</div><div class="v">${p.numDoc||'—'}</div></div>
+      <div class="fc"><div class="k">Emissão</div><div class="v">${fd(p.dataEmissao)}</div></div>
+    </div>
+    <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;padding-bottom:30px">
+      <button class="btn primary" style="justify-content:center" onclick="closeDet();nav('edit',{fogo:'${p.fogo}'})">✏️ Editar</button>
+      <button class="btn" style="justify-content:center" onclick="closeDet()">Fechar</button>
+    </div>`;
+  document.getElementById('dbg').classList.add('open');
+  document.getElementById('drawer').classList.add('open');
+}
+function closeDet(){document.getElementById('dbg').classList.remove('open');document.getElementById('drawer').classList.remove('open');}
+document.getElementById('dbg').onclick=closeDet;
+
+// ============================
+//  RELATÓRIOS
+// ============================
+// ============================
+//  RELATÓRIO POR FABRICANTE/MODELO
+// ============================
+let RELMOD_FAB = 'DUNLOP';
+let RELMOD_MODELOS = new Set(['SP320','SP835']);
+
+function relModSetFab(v){ RELMOD_FAB = v.toUpperCase(); nav('rel-modelo'); }
+function relModToggleModelo(m){
+  if(RELMOD_MODELOS.has(m)) RELMOD_MODELOS.delete(m); else RELMOD_MODELOS.add(m);
+  nav('rel-modelo');
+}
+
+function renderRelModelo(mc){
+  const fabQ = RELMOD_FAB.trim().toUpperCase();
+  const todosDoFab = P.filter(p=>(p.fabricante||'').toUpperCase()===fabQ);
+  const modelosDisponiveis = [...new Set(todosDoFab.map(p=>p.modelo).filter(Boolean))].sort();
+
+  const filtrados = todosDoFab.filter(p=>RELMOD_MODELOS.size===0 || RELMOD_MODELOS.has(p.modelo));
+
+  const stMap = {'veiculo':'Em Veículo','almox':'Almoxarifado','reforma':'Reforma','sucata':'Sucata'};
+  const comKm = filtrados.map(p=>getKmPneu(p));
+  const totalKm = comKm.reduce((a,b)=>a+b,0);
+  const mediaKm = filtrados.length ? Math.round(totalKm/filtrados.length) : 0;
+  const emVeiculo = filtrados.filter(p=>p.status==='veiculo').length;
+
+  const porModelo = {};
+  filtrados.forEach(p=>{ porModelo[p.modelo] = (porModelo[p.modelo]||0)+1; });
+
+  const linhas = filtrados.slice().sort((a,b)=>getKmPneu(b)-getKmPneu(a));
+
+  mc.innerHTML = `
+  <div class="vh"><h1>🔎 Por Fabricante / Modelo</h1><div class="sub">Filtre por fabricante e modelo — KM rodado e posição de cada pneu</div></div>
+  <div class="vb">
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;margin-bottom:5px">Fabricante</label>
+        <input id="relmod-fab" value="${RELMOD_FAB}" onkeydown="if(event.key==='Enter')relModSetFab(this.value)"
+          style="padding:9px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--txt);font-size:14px;width:200px">
+      </div>
+      <button class="btn" onclick="relModSetFab(document.getElementById('relmod-fab').value)" style="background:var(--blue);color:#fff;font-weight:600;padding:9px 16px">Buscar</button>
+    </div>
+
+    ${modelosDisponiveis.length ? `
+    <div style="margin-bottom:16px">
+      <label style="display:block;font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;margin-bottom:6px">Modelos de ${fabQ} (clique para marcar/desmarcar)</label>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        ${modelosDisponiveis.map(m=>`<span onclick="relModToggleModelo('${m}')" style="cursor:pointer;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid ${RELMOD_MODELOS.has(m)?'var(--blue)':'var(--bd)'};background:${RELMOD_MODELOS.has(m)?'rgba(56,189,248,.12)':'var(--bg2)'};color:${RELMOD_MODELOS.has(m)?'var(--blue)':'var(--txt2)'}">${m} <span style="opacity:.6">(${porModelo[m]||todosDoFab.filter(p=>p.modelo===m).length})</span></span>`).join('')}
+      </div>
+    </div>` : `<div style="padding:20px;color:var(--txt3);font-size:13px">Nenhum pneu encontrado do fabricante "${fabQ}"</div>`}
+
+    ${filtrados.length ? `
+    <div class="kpis" style="margin-bottom:16px">
+      <div class="kpi o"><div class="lbl">Pneus encontrados</div><div class="val">${filtrados.length}</div></div>
+      <div class="kpi g"><div class="lbl">Em veículo</div><div class="val">${emVeiculo}</div></div>
+      <div class="kpi b"><div class="lbl">KM médio</div><div class="val">${mediaKm.toLocaleString('pt-BR')}</div></div>
+      <div class="kpi y"><div class="lbl">KM total rodado</div><div class="val">${totalKm.toLocaleString('pt-BR')}</div></div>
+    </div>
+
+    <div style="overflow-x:auto;border:1px solid var(--bd);border-radius:12px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:var(--bg2);text-align:left">
+          <th style="padding:10px 14px">Fogo</th><th style="padding:10px 14px">Modelo</th>
+          <th style="padding:10px 14px">Status</th><th style="padding:10px 14px">Veículo</th>
+          <th style="padding:10px 14px">Posição</th><th style="padding:10px 14px" class="r">Sulco</th>
+          <th style="padding:10px 14px" class="r">KM Rodado</th>
+        </tr></thead>
+        <tbody>
+        ${linhas.map(p=>{
+          const veic = p.cavalo || p.carreta || '—';
+          const km = getKmPneu(p);
+          return `<tr style="border-top:1px solid var(--bd);cursor:pointer" onclick="openDet('${p.fogo}')">
+            <td style="padding:8px 14px;font-family:monospace;font-weight:700;color:var(--txt)">${p.fogo}</td>
+            <td style="padding:8px 14px">${p.modelo||'—'}</td>
+            <td style="padding:8px 14px"><span class="badge ${p.status==='veiculo'?'green':p.status==='sucata'?'red':p.status==='reforma'?'blue':'gray'}">${stMap[p.status]||p.status}</span></td>
+            <td style="padding:8px 14px;font-family:monospace">${veic}</td>
+            <td style="padding:8px 14px;font-family:monospace;font-size:11px">${p.posicao||'—'}</td>
+            <td style="padding:8px 14px" class="r">${p.sulcoMenor||0}mm</td>
+            <td style="padding:8px 14px" class="r">${km.toLocaleString('pt-BR')}</td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+    </div>` : ''}
+  </div>`;
+}
+
+function renderRel(mc,tipo){
+  const titles={mov:'Movimentações',vida:'Projeção de Vida',fab:'Custo por Fabricantes',cpk:'Custo por Pneu (CPK)','almox-rep':'Pneus em Almoxarifado',veh:'Pneus por Veículo',suc:'Pneus Sucateados'};
+  let content='';
+  if(tipo==='mov'){
+    const rows=MV.slice().reverse().slice(0,300);
+    content=`<div class="tbl"><table><thead><tr><th>Data</th><th>Tipo</th><th>Fogo</th><th>Cavalo</th><th>Carreta</th><th>Posição</th><th class="r">Sulco</th><th class="r">KM</th><th>Usuário</th></tr></thead><tbody>
+    ${rows.map(m=>{const tc={'Entrada em Veículo':'green','Rodízio':'orange','Envio para Reforma':'blue','Sucata':'red','Saída para Almoxarifado':'gray','Cadastro':'gray','Atualização':'gray'};
+    return`<tr><td>${fd(m.data)}</td><td><span class="badge ${tc[m.tipo]||'gray'}">${m.tipo}</span></td>
+    <td><span class="fg">${m.fogo}</span></td><td>${m.cavalo||'—'}</td><td>${m.carreta||'—'}</td>
+    <td style="font-family:monospace;font-size:11px">${m.posicao||'—'}</td><td class="r">${m.sulco||'—'}</td><td class="r">${m.km||0}</td><td style="font-size:11px;color:var(--txt3)">${m.usuario||'—'}</td></tr>`;}).join('')}
+    </tbody></table></div>`;
+  } else if(tipo==='vida'){
+    const list=P.filter(p=>p.status==='veiculo').sort((a,b)=>a.sulcoMenor-b.sulcoMenor);
+    content=`<div class="tbl"><table><thead><tr><th>Fogo</th><th>Fabricante</th><th>Veículo/Posição</th><th class="r">Sulco</th><th class="r">KM Atual</th><th class="r">Desgaste/1000km</th><th class="r">KM Restante</th><th>Status</th></tr></thead><tbody>
+    ${list.map(p=>{const km=getKmPneu(p);const wear=km>0?(17.05-(p.sulcoMenor||0))/km*1000:0;const kmR=wear>0?Math.round((p.sulcoMenor-3)/(wear/1000)):0;
+    return`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td><td>${p.fabricante} ${p.modelo}</td>
+    <td style="font-family:monospace;font-size:11px">${p.cavalo||p.carreta||'—'} / ${p.posicao||'—'}</td>
+    <td class="r">${sbadge(p.sulcoMenor)}</td><td class="r">${fkm(km)}</td>
+    <td class="r">${wear>0?wear.toFixed(3):'—'}</td>
+    <td class="r" style="color:${kmR>0?'var(--green)':'var(--red)'}">${kmR>0?fkm(kmR):'TROCAR'}</td>
+    <td>${sbadge(p.sulcoMenor)}</td></tr>`;}).join('')}</tbody></table></div>`;
+  } else if(tipo==='fab'){
+    const byFab={};P.forEach(p=>{if(!byFab[p.fabricante])byFab[p.fabricante]={qtd:0,invest:0,km:0};byFab[p.fabricante].qtd++;byFab[p.fabricante].invest+=p.valorU||0;byFab[p.fabricante].km+=getKmPneu(p);});
+    content=`<div class="tbl"><table><thead><tr><th>Fabricante</th><th class="r">Pneus</th><th class="r">Investimento</th><th class="r">KM Total</th><th class="r">CPK Médio</th><th class="r">Valor Médio</th></tr></thead><tbody>
+    ${Object.entries(byFab).sort((a,b)=>b[1].invest-a[1].invest).map(([f,d])=>`<tr><td><strong>${f}</strong></td><td class="r">${d.qtd}</td><td class="r">${fr(d.invest)}</td><td class="r">${fkm(d.km)}</td><td class="r">${d.km>0?'R$ '+(d.invest/d.km).toFixed(4):'—'}</td><td class="r">${fr(d.invest/d.qtd)}</td></tr>`).join('')}</tbody></table></div>`;
+  } else if(tipo==='cpk'){
+    const list=P.filter(p=>getKmPneu(p)>0&&p.valorU>0).map(p=>({...p,_km:getKmPneu(p),_cpk:p.valorU/getKmPneu(p)})).sort((a,b)=>b._cpk-a._cpk);
+    content=`<div class="tbl"><table><thead><tr><th>Fogo</th><th>Fabricante</th><th>Modelo</th><th>Vida</th><th class="r">Valor</th><th class="r">KM</th><th class="r">CPK</th><th>Status</th></tr></thead><tbody>
+    ${list.map(p=>`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td><td>${p.fabricante}</td><td>${p.modelo}</td>
+    <td style="font-size:11px">${p.vida}</td><td class="r">${fr(p.valorU)}</td><td class="r">${fkm(p._km)}</td>
+    <td class="r" style="color:var(--a2);font-weight:700">R$ ${p._cpk.toFixed(4)}</td><td>${sbadge(p.sulcoMenor)}</td></tr>`).join('')}</tbody></table></div>`;
+  } else if(tipo==='almox-rep'){
+    const byA={};P.filter(p=>p.status==='almox').forEach(p=>{const k=p.almoxarifado||'Outros';if(!byA[k])byA[k]=[];byA[k].push(p);});
+    content=Object.entries(byA).map(([alm,list])=>`
+    <div style="margin-bottom:18px"><h3 style="font-size:13px;color:var(--a2);padding:8px 0">📦 ${alm} (${list.length} pneus)</h3>
+    <div class="tbl"><table><thead><tr><th>Fogo</th><th>Fabricante</th><th>Modelo</th><th>Vida</th><th class="r">Sulco</th><th class="r">KM Total</th><th class="r">Valor</th></tr></thead>
+    <tbody>${list.map(p=>`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td><td>${p.fabricante}</td><td>${p.modelo}</td><td style="font-size:11px">${p.vida}</td><td class="r">${sbadge(p.sulcoMenor)}</td><td class="r">${fkm(p.kmTotal||p.kmVida)}</td><td class="r">${fr(p.valorU)}</td></tr>`).join('')}</tbody>
+    </table></div></div>`).join('')||'<div class="empty"><div class="eic">📦</div><div class="etxt">Almox. vazio</div></div>';
+  } else if(tipo==='veh'){
+    content=PARES_DEFAULT.slice(0,40).map((par,i)=>{
+      const vp=P.filter(p=>p.status==='veiculo'&&(p.cavalo===par[0]||p.carreta===(CFG.pairs[par[0]]||par[1])));
+      if(!vp.length) return '';
+      return`<div style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer" onclick="nav('frota-map',{idx:${i}})">
+        <span class="plate">${par[0]}</span>+<span class="plate">${par[1]}</span>
+        <span style="font-size:11px;color:var(--txt3)">${vp.length} pneus · ${fkm(CFG.hodos[par[0]]||0)}</span></div>
+      <div class="tbl"><table><thead><tr><th>Fogo</th><th>Posição</th><th>Fabricante/Modelo</th><th class="r">Sulco</th><th class="r">KM</th><th class="r">CPK</th></tr></thead>
+      <tbody>${vp.map(p=>{const km=getKmPneu(p);return`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td>
+      <td style="font-family:monospace;font-size:11px">${p.posicao||'—'} – ${POS_LBL[p.posicao]||''}</td>
+      <td>${p.fabricante} ${p.modelo}</td><td class="r">${sbadge(p.sulcoMenor)}</td><td class="r">${fkm(km)}</td>
+      <td class="r">${cpk({...p,kmVida:km})>0?'R$ '+cpk({...p,kmVida:km}).toFixed(4):'—'}</td></tr>`;}).join('')}
+      </tbody></table></div></div>`;
+    }).join('')||'<div class="empty"><div class="eic">🚛</div><div class="etxt">Sem pneus em veículo</div></div>';
+  } else if(tipo==='suc'){
+    const list=P.filter(p=>p.status==='sucata');
+    const totalP=list.reduce((s,p)=>s+(p.valorU||0),0);
+    content=`<div class="kpis"><div class="kpi r"><div class="lbl">Sucateados</div><div class="val">${list.length}</div></div><div class="kpi r"><div class="lbl">Valor Perdido</div><div class="val" style="font-size:18px">${fr(totalP)}</div></div></div>
+    <div class="tbl"><table><thead><tr><th>Fogo</th><th>Fabricante</th><th>Modelo</th><th class="r">Sulco Final</th><th class="r">KM Rodado</th><th class="r">Valor</th><th class="r">CPK</th></tr></thead>
+    <tbody>${list.map(p=>{ const km=p.kmVida; const cpkV=km>0?(p.valorU||0)/km:0; return`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td><td>${p.fabricante}</td><td>${p.modelo}</td><td class="r">${sbadge(p.sulcoMenor)}</td><td class="r">${fkm(km)}</td><td class="r">${fr(p.valorU)}</td><td class="r">${cpkV>0?'R$ '+cpkV.toFixed(4):'—'}</td></tr>`;}).join('')||'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--txt3)">Nenhum pneu sucateado</td></tr>'}</tbody></table></div>`;
+  }
+  mc.innerHTML=`<div class="vh"><div><h1>📄 ${titles[tipo]||'Relatório'}</h1></div><button class="btn" onclick="window.print()">🖨️ Imprimir</button></div>
+  <div class="vb"><div class="card"><div class="cb">${content}</div></div></div>`;
+}
+
+// ============================
+//  B.I.
+// ============================
+let biCharts=[];
+function destroyBI(){biCharts.forEach(c=>{try{c.destroy()}catch(e){}});biCharts=[];}
+const COLS=['#f97316','#38bdf8','#22c55e','#eab308','#a78bfa','#f43f5e','#06b6d4','#84cc16','#f43f5e','#0ea5e9'];
+
+// ============================
+//  TROCAS POR PERÍODO
+// ============================
+let TROCAS_MODO = 'dia'; // 'dia' | 'semana' | 'mes'
+
+function setTrocasModo(m){ TROCAS_MODO = m; renderMain(); }
+
+function isoSemana_(d){
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(dt.getUTCFullYear(),0,1));
+  const semana = Math.ceil((((dt-yearStart)/86400000)+1)/7);
+  return dt.getUTCFullYear()+'-S'+String(semana).padStart(2,'0');
+}
+
+function chaveTroca_(dataStr, modo){
+  const d = new Date(dataStr);
+  if(isNaN(d)) return null;
+  if(modo==='dia') return d.toISOString().slice(0,10); // YYYY-MM-DD
+  if(modo==='semana') return isoSemana_(d);
+  return d.toISOString().slice(0,7); // YYYY-MM
+}
+
+function labelTroca_(chave, modo){
+  if(modo==='dia'){ const [y,m,dd]=chave.split('-'); return dd+'/'+m; }
+  if(modo==='semana'){ const [y,s]=chave.split('-S'); return 'Sem '+s+'/'+y.slice(2); }
+  const [y,m]=chave.split('-'); const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return meses[parseInt(m,10)-1]+'/'+y.slice(2);
+}
+
+function renderTrocasPeriodo(mc){
+  destroyBI();
+  const modo = TROCAS_MODO;
+  const grupos = {};
+  const porTipo = {};
+  MV.forEach(m=>{
+    const chave = chaveTroca_(m.data, modo);
+    if(!chave) return;
+    grupos[chave] = (grupos[chave]||0)+1;
+    const tipoBase = (m.tipo||'Outro').replace(/\s*\(.*?\)/,''); // remove "(era X)" etc
+    porTipo[tipoBase] = (porTipo[tipoBase]||0)+1;
+  });
+
+  const chaves = Object.keys(grupos).sort();
+  const limite = modo==='dia'?30:(modo==='semana'?16:12);
+  const chavesRecentes = chaves.slice(-limite);
+  const labels = chavesRecentes.map(c=>labelTroca_(c, modo));
+  const valores = chavesRecentes.map(c=>grupos[c]);
+
+  const hoje = new Date();
+  const chaveHoje = chaveTroca_(hoje.toISOString(), modo);
+  const trocasHoje = grupos[chaveHoje] || 0;
+  const total = MV.length;
+  const media = chaves.length ? (total/chaves.length).toFixed(1) : 0;
+
+  const sortTipo = Object.entries(porTipo).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  mc.innerHTML = `
+  <div class="vh"><h1>📅 Trocas por Período</h1><div class="sub">Movimentações de pneus ao longo do tempo</div></div>
+  <div class="vb">
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn ${modo==='dia'?'primary':''}" onclick="setTrocasModo('dia')" style="${modo==='dia'?'background:var(--blue);color:#fff':'background:var(--bg2);border:1px solid var(--bd);color:var(--txt2)'};font-weight:600;padding:8px 18px">Dia</button>
+      <button class="btn ${modo==='semana'?'primary':''}" onclick="setTrocasModo('semana')" style="${modo==='semana'?'background:var(--blue);color:#fff':'background:var(--bg2);border:1px solid var(--bd);color:var(--txt2)'};font-weight:600;padding:8px 18px">Semana</button>
+      <button class="btn ${modo==='mes'?'primary':''}" onclick="setTrocasModo('mes')" style="${modo==='mes'?'background:var(--blue);color:#fff':'background:var(--bg2);border:1px solid var(--bd);color:var(--txt2)'};font-weight:600;padding:8px 18px">Mês</button>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi o"><div class="lbl">Total de Movimentações</div><div class="val">${total.toLocaleString('pt-BR')}</div></div>
+      <div class="kpi g"><div class="lbl">Hoje</div><div class="val">${trocasHoje}</div></div>
+      <div class="kpi b"><div class="lbl">Média por ${modo==='dia'?'dia':modo==='semana'?'semana':'mês'}</div><div class="val">${media}</div></div>
+      <div class="kpi y"><div class="lbl">${modo==='dia'?'Últimos 30 dias':modo==='semana'?'Últimas 16 semanas':'Últimos 12 meses'}</div><div class="val">${valores.reduce((a,b)=>a+b,0)}</div></div>
+    </div>
+
+    <div class="card"><div class="ch"><h2>Movimentações por ${modo==='dia'?'Dia':modo==='semana'?'Semana':'Mês'}</h2></div>
+      <div class="cb"><div class="chart-wrap tall"><canvas id="ch-trocas"></canvas></div></div>
+    </div>
+
+    <div class="card" style="margin-top:16px"><div class="ch"><h2>Por Tipo de Movimentação</h2></div>
+      <div class="cb"><div class="chart-wrap"><canvas id="ch-trocas-tipo"></canvas></div></div>
+    </div>
+  </div>`;
+
+  const opt={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#a3adbf',font:{size:11}}}},scales:{x:{ticks:{color:'#6c7689'}},y:{ticks:{color:'#6c7689'},grid:{color:'#2a3140'}}}};
+  setTimeout(()=>{
+    if(!labels.length){
+      document.getElementById('ch-trocas').parentElement.innerHTML = '<div style="padding:40px;text-align:center;color:var(--txt3)">Nenhuma movimentação registrada ainda</div>';
+    } else {
+      biCharts.push(new Chart('ch-trocas',{type:'bar',data:{labels,datasets:[{label:'Trocas',data:valores,backgroundColor:'#f97316',borderRadius:5}]},options:opt}));
+    }
+    if(sortTipo.length){
+      biCharts.push(new Chart('ch-trocas-tipo',{type:'doughnut',data:{labels:sortTipo.map(([k])=>k),datasets:[{data:sortTipo.map(([,v])=>v),backgroundColor:COLS,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{labels:{color:'#a3adbf',font:{size:11}}}}}}));
+    }
+  },50);
+}
+
+function renderBI(mc,tipo){
+  destroyBI();
+  if(tipo==='pneu'){
+    const byFab={},byVida={},bySt={'veiculo':0,'almox':0,'reforma':0,'sucata':0};
+    P.forEach(p=>{byFab[p.fabricante]=(byFab[p.fabricante]||0)+1;byVida[p.vida]=(byVida[p.vida]||0)+1;if(bySt[p.status]!==undefined)bySt[p.status]++;});
+    const sortFab=Object.entries(byFab).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    mc.innerHTML=`<div class="vh"><h1>🔵 B.I. Pneus</h1></div><div class="vb">
+    <div class="kpis">
+      <div class="kpi o"><div class="lbl">Total</div><div class="val">${P.length}</div></div>
+      <div class="kpi g"><div class="lbl">Em Veículo</div><div class="val">${bySt.veiculo}</div></div>
+      <div class="kpi b"><div class="lbl">Almoxarifado</div><div class="val">${bySt.almox}</div></div>
+      <div class="kpi y"><div class="lbl">Reforma</div><div class="val">${bySt.reforma}</div></div>
+      <div class="kpi r"><div class="lbl">Sucata</div><div class="val">${bySt.sucata}</div></div>
+    </div>
+    <div class="g3">
+      <div class="card"><div class="ch"><h2>Por Fabricante</h2></div><div class="cb"><div class="chart-wrap"><canvas id="ch-fab"></canvas></div></div></div>
+      <div class="card"><div class="ch"><h2>Por Vida</h2></div><div class="cb"><div class="chart-wrap"><canvas id="ch-vida"></canvas></div></div></div>
+      <div class="card"><div class="ch"><h2>Por Status</h2></div><div class="cb"><div class="chart-wrap"><canvas id="ch-st"></canvas></div></div></div>
+    </div>
+    <div class="card"><div class="ch"><h2>Pneus por Fabricante</h2></div><div class="cb"><div class="chart-wrap tall"><canvas id="ch-bar"></canvas></div></div></div>
+    </div>`;
+    const opt={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#a3adbf',font:{size:11}}}}};
+    setTimeout(()=>{
+      if(typeof Chart==='undefined') return;
+      biCharts.push(new Chart('ch-fab',{type:'doughnut',data:{labels:sortFab.map(([k])=>k),datasets:[{data:sortFab.map(([,v])=>v),backgroundColor:COLS,borderWidth:0}]},options:{...opt,cutout:'60%'}}));
+      const ve=Object.entries(byVida);
+      biCharts.push(new Chart('ch-vida',{type:'doughnut',data:{labels:ve.map(([k])=>k.replace('Pneu Novo (1º Vida)','1ª Vida').replace('1º Recape','2ª').replace('2º Recape','3ª')),datasets:[{data:ve.map(([,v])=>v),backgroundColor:COLS,borderWidth:0}]},options:{...opt,cutout:'60%'}}));
+      biCharts.push(new Chart('ch-st',{type:'doughnut',data:{labels:['Em Veículo','Almox.','Reforma','Sucata'],datasets:[{data:Object.values(bySt),backgroundColor:['#22c55e','#38bdf8','#eab308','#ef4444'],borderWidth:0}]},options:{...opt,cutout:'60%'}}));
+      biCharts.push(new Chart('ch-bar',{type:'bar',data:{labels:sortFab.map(([k])=>k),datasets:[{label:'Pneus',data:sortFab.map(([,v])=>v),backgroundColor:COLS,borderRadius:5}]},options:{...opt,scales:{x:{ticks:{color:'#6c7689'}},y:{ticks:{color:'#6c7689'},grid:{color:'#2a3140'}}}}}));
+    },150);
+  } else if(tipo==='suc'){
+    const suc=P.filter(p=>p.status==='sucata');
+    const byFab={};suc.forEach(p=>{if(!byFab[p.fabricante])byFab[p.fabricante]={qtd:0,km:0,invest:0};byFab[p.fabricante].qtd++;byFab[p.fabricante].km+=p.kmVida||0;byFab[p.fabricante].invest+=p.valorU||0;});
+    const rows=Object.entries(byFab).sort((a,b)=>b[1].qtd-a[1].qtd);
+    const kmMed=suc.length?suc.reduce((s,p)=>s+(p.kmVida||0),0)/suc.length:0;
+    mc.innerHTML=`<div class="vh"><h1>📉 B.I. Sucateamento</h1></div><div class="vb">
+    <div class="kpis">
+      <div class="kpi r"><div class="lbl">Total Sucateado</div><div class="val">${suc.length}</div></div>
+      <div class="kpi r"><div class="lbl">Valor Perdido</div><div class="val" style="font-size:18px">${fr(suc.reduce((s,p)=>s+(p.valorU||0),0))}</div></div>
+      <div class="kpi y"><div class="lbl">KM Médio</div><div class="val">${fkm(kmMed)}</div></div>
+    </div>
+    <div class="g2">
+      <div class="card"><div class="ch"><h2>Sucata por Fabricante</h2></div><div class="cb"><div class="chart-wrap"><canvas id="ch-sfab"></canvas></div></div></div>
+      <div class="card"><div class="ch"><h2>KM Médio até Sucata</h2></div><div class="cb"><div class="chart-wrap"><canvas id="ch-skm"></canvas></div></div></div>
+    </div>
+    <div class="card"><div class="ch"><h2>Tabela por Fabricante</h2></div>
+    <div class="tbl"><table><thead><tr><th>Fabricante</th><th class="r">Qtd.</th><th class="r">KM Médio</th><th class="r">Valor Perdido</th><th class="r">CPK Médio</th></tr></thead>
+    <tbody>${rows.map(([f,d])=>`<tr><td><strong>${f}</strong></td><td class="r">${d.qtd}</td><td class="r">${fkm(d.km/d.qtd)}</td><td class="r">${fr(d.invest)}</td><td class="r">${d.km>0?'R$ '+(d.invest/d.km).toFixed(4):'—'}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--txt3)">Sem dados</td></tr>'}</tbody>
+    </table></div></div>
+    </div>`;
+    setTimeout(()=>{
+      if(typeof Chart==='undefined') return;
+      biCharts.push(new Chart('ch-sfab',{type:'doughnut',data:{labels:rows.map(([k])=>k),datasets:[{data:rows.map(([,d])=>d.qtd),backgroundColor:COLS,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{labels:{color:'#a3adbf',font:{size:11}}}}}}));
+      biCharts.push(new Chart('ch-skm',{type:'bar',data:{labels:rows.map(([k])=>k),datasets:[{label:'KM Médio',data:rows.map(([,d])=>Math.round(d.km/Math.max(d.qtd,1))),backgroundColor:COLS,borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#a3adbf'}}},scales:{x:{ticks:{color:'#6c7689'}},y:{ticks:{color:'#6c7689'},grid:{color:'#2a3140'}}}}}));
+    },150);
+  } else if(tipo==='alertas'){
+    const crit=P.filter(p=>p.status==='veiculo'&&p.sulcoMenor<3);
+    const aten=P.filter(p=>p.status==='veiculo'&&p.sulcoMenor>=3&&p.sulcoMenor<6);
+    mc.innerHTML=`<div class="vh"><h1>⚠️ Alertas e Previsões</h1></div><div class="vb">
+    <div class="kpis">
+      <div class="kpi r"><div class="lbl">Críticos (trocar)</div><div class="val">${crit.length}</div><div class="meta">&lt; 3mm</div></div>
+      <div class="kpi y"><div class="lbl">Em Atenção</div><div class="val">${aten.length}</div><div class="meta">3–6mm</div></div>
+    </div>
+    ${crit.length?`<div class="card" style="margin-bottom:14px"><div class="ch" style="border-color:var(--red)"><h2 style="color:var(--red)">🔴 CRÍTICOS — Trocar Imediatamente</h2><span class="hint">${crit.length} pneus</span></div>
+    <div class="tbl"><table><thead><tr><th>Fogo</th><th>Veículo</th><th>Posição</th><th>Fabricante/Modelo</th><th class="r">Sulco</th><th class="r">KM</th><th></th></tr></thead>
+    <tbody>${crit.map(p=>`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td>
+    <td><span class="plate">${p.cavalo||p.carreta||'—'}</span></td>
+    <td style="font-family:monospace;font-size:11px">${p.posicao||'—'}</td>
+    <td>${p.fabricante} ${p.modelo}</td><td class="r">${sbadge(p.sulcoMenor)}</td>
+    <td class="r">${fkm(getKmPneu(p))}</td>
+    <td><button class="btn sm danger" onclick="event.stopPropagation();movPneu('${p.fogo}','reforma')">→ Reforma</button></td></tr>`).join('')}</tbody></table></div></div>`:''}
+    ${aten.length?`<div class="card"><div class="ch" style="border-color:var(--yellow)"><h2 style="color:var(--yellow)">🟡 EM ATENÇÃO — Monitorar</h2><span class="hint">${aten.length} pneus</span></div>
+    <div class="tbl"><table><thead><tr><th>Fogo</th><th>Veículo</th><th>Posição</th><th>Fabricante/Modelo</th><th class="r">Sulco</th><th class="r">KM Restante Est.</th></tr></thead>
+    <tbody>${aten.map(p=>{const km=getKmPneu(p);const wear=km>0?(17.05-p.sulcoMenor)/km:0;const kmR=wear>0?Math.round((p.sulcoMenor-3)/wear):0;
+    return`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td>
+    <td><span class="plate">${p.cavalo||p.carreta||'—'}</span></td>
+    <td style="font-family:monospace;font-size:11px">${p.posicao||'—'}</td>
+    <td>${p.fabricante} ${p.modelo}</td><td class="r">${sbadge(p.sulcoMenor)}</td>
+    <td class="r" style="color:var(--yellow)">${kmR>0?fkm(kmR):'—'}</td></tr>`;}).join('')}</tbody></table></div></div>`:''}
+    ${!crit.length&&!aten.length?'<div class="empty"><div class="eic">✅</div><div class="etxt">Todos os pneus dentro dos limites</div></div>':''}
+    </div>`;
+  }
+}
+function movPneu(fogo,novoStatus){
+  const p=getPneu(fogo); if(!p) return;
+  p.status=novoStatus;
+  if(novoStatus!=='veiculo'){p.posicao=null;p.cavalo=null;p.carreta=null;}
+  addM(fogo,novoStatus==='reforma'?'Envio para Reforma':'Sucata','','','',p.sulcoMenor,0);
+  save();toast(fogo+' → '+novoStatus,'#38bdf8');renderMain();
+}
+
+// ============================
+//  BACKUP / RESTAURAR
+// ============================
+function renderBackup(mc){
+  mc.innerHTML=`<div class="vh"><div><h1>💾 Backup / Restaurar</h1><div class="sub">Exportar e importar dados</div></div></div>
+  <div class="vb">
+  <div class="g2">
+    <div class="card"><div class="ch"><h2>📤 Exportar Dados</h2></div><div class="cb">
+      <p style="color:var(--txt2);font-size:13px;margin-bottom:16px">Salva todos os pneus e movimentações em um arquivo JSON que pode ser importado depois.</p>
+      <button class="btn primary" style="width:100%;justify-content:center" onclick="exportarDados()">⬇️ Baixar Backup JSON</button>
+    </div></div>
+    <div class="card"><div class="ch"><h2>📥 Importar Dados</h2></div><div class="cb">
+      <p style="color:var(--txt2);font-size:13px;margin-bottom:12px">Cole o conteúdo do backup JSON abaixo para restaurar os dados.</p>
+      <textarea id="import-txt" style="height:120px;font-family:monospace;font-size:11px" placeholder='{"pneus":[...],"movs":[...],"cfg":...}'></textarea>
+      <button class="btn success" style="width:100%;justify-content:center;margin-top:10px" onclick="importarDados()">⬆️ Restaurar Backup</button>
+    </div></div>
+  </div>
+  <div class="card" style="margin-top:14px"><div class="ch"><h2>📋 Importar Nova Lista de Pares</h2></div><div class="cb">
+    <p style="color:var(--txt2);font-size:13px;margin-bottom:10px">Cole a lista atualizada de pares CAVALO,CARRETA (um por linha):</p>
+    <textarea id="pares-txt" style="height:140px;font-family:monospace;font-size:11px" placeholder="GEE 8D56,FJC 1A57&#10;CGS 6D85,CFZ 1H67&#10;..."></textarea>
+    <button class="btn primary" style="margin-top:10px;justify-content:center" onclick="importarPares()">✅ Atualizar Engates</button>
+  </div></div>
+  </div>`;
+}
+function exportarDados(){
+  const data=JSON.stringify({pneus:P,movs:MV,cfg:CFG,exportado:new Date().toISOString()},null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='backup_pneus_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('Backup exportado!','#22c55e');
+}
+function importarDados(){
+  const txt=document.getElementById('import-txt').value.trim();
+  try{
+    const d=JSON.parse(txt);
+    if(!d.pneus||!Array.isArray(d.pneus)){toast('Arquivo inválido','#ef4444');return;}
+    if(!confirm(`Importar ${d.pneus.length} pneus? Os dados atuais serão substituídos.`)) return;
+    P=d.pneus; MV=d.movs||[]; CFG=d.cfg||{pairs:{},hodos:{}};
+    if(!CFG.pairs) CFG.pairs={}; if(!CFG.hodos) CFG.hodos={};
+    save(); toast('Backup restaurado!','#22c55e'); nav('home');
+  }catch(e){toast('Erro ao importar: '+e.message,'#ef4444');}
+}
+function importarPares(){
+  const txt=document.getElementById('pares-txt').value.trim();
+  if(!txt) return;
+  let cnt=0;
+  txt.split('\n').forEach(line=>{
+    const parts=line.trim().split(',');
+    if(parts.length===2){const c=parts[0].trim().toUpperCase();const t=parts[1].trim().toUpperCase();if(c&&t){CFG.pairs[c]=t;cnt++;}}
+  });
+  save(); toast(`${cnt} pares atualizados`,'#22c55e');
+}
+
+// ============================
+//  TOAST
+// ============================
+let toastT;
+function toast(msg,color='#f97316'){
+  const t=document.getElementById('toast');
+  document.getElementById('tic').style.background=color;
+  document.getElementById('tmsg').textContent=msg;
+  t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ============================
+//  SIDEBAR EVENTS
+// ============================
+const SB_MAP={
+  'sb-home':'home','sb-frota':'frota','sb-almox':'almox','sb-reforma':'reforma',
+  'sb-sucata':'sucata','sb-estoque':'estoque','sb-engate':'engate','sb-km':'km-lote','sb-alocar':'alocar','sb-cadastro':'cadastro','sb-lote':'add-lote','sb-semfogo':'sem-fogo',
+  'sb-todos':'todos','sb-rel-mov':'rel-mov','sb-rel-vida':'rel-vida','sb-rel-fab':'rel-fab',
+  'sb-rel-cpk':'rel-cpk','sb-rel-almox-rep':'rel-almox-rep','sb-rel-veh':'rel-veh','sb-rel-modelo':'rel-modelo',
+  'sb-rel-suc':'rel-suc','sb-bi-suc':'bi-suc','sb-bi-pneu':'bi-pneu',
+  'sb-bi-alertas':'bi-alertas','sb-trocas':'trocas-periodo','sb-backup':'backup'
+};
+Object.entries(SB_MAP).forEach(([id,view])=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('click',()=>{sTab='almox';nav(view);});
+});
+
+// ============================
+//  INIT
+// ============================
+showApp();
+</script>
+</div><!-- /app-root -->
+</body>
+</html>
