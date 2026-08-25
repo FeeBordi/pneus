@@ -6,7 +6,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-:root{--bg:#F5F6F8;--bg2:#ECEEF1;--panel:#FFFFFF;--panel2:#F1F3F5;--panel3:#E4E7EB;--line:#DDE1E6;--line2:#C7CCD3;--bd:#DDE1E6;--txt:#14181F;--txt2:#4A525E;--txt3:#6B7480;--accent:#0F7C87;--a2:#14929F;--ad:rgba(15,124,135,.10);--green:#16803D;--gbg:rgba(22,128,61,.12);--yellow:#B45309;--ybg:rgba(180,83,9,.12);--red:#B91C1C;--rbg:rgba(185,28,28,.12);--blue:#1D4ED8;--bbg:rgba(29,78,216,.12);--sw:230px}
+:root{--bg:#0f1216;--bg2:#141820;--panel:#191e28;--panel2:#1f2531;--panel3:#252c3a;--line:#2a3140;--line2:#394151;--bd:#2a3140;--txt:#eef1f6;--txt2:#a3adbf;--txt3:#6c7689;--accent:#f97316;--a2:#fb923c;--ad:rgba(249,115,22,.14);--green:#22c55e;--gbg:rgba(34,197,94,.13);--yellow:#eab308;--ybg:rgba(234,179,8,.14);--red:#ef4444;--rbg:rgba(239,68,68,.14);--blue:#38bdf8;--bbg:rgba(56,189,248,.13);--sw:230px}
 *{box-sizing:border-box;margin:0;padding:0}html,body{height:100%;overflow:hidden}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased}
 ::-webkit-scrollbar{width:7px;height:7px}::-webkit-scrollbar-thumb{background:var(--line2);border-radius:5px}
@@ -25,7 +25,7 @@ button{font-family:inherit;cursor:pointer}
 .sb-item .ic{font-size:15px;width:20px;text-align:center;flex-shrink:0}
 .sb-cnt{margin-left:auto;background:var(--panel3);color:var(--txt3);border-radius:10px;font-size:10px;padding:1px 7px;font-family:monospace;min-width:24px;text-align:center}
 .sb-cnt.red{background:var(--rbg);color:var(--red)}.sb-cnt.yellow{background:var(--ybg);color:var(--yellow)}.sb-cnt.green{background:var(--gbg);color:var(--green)}
-.main{margin-left:var(--sw);height:100vh;overflow-y:auto;background:var(--bg)}
+.main{margin-left:var(--sw);height:100vh;overflow-y:auto;background:radial-gradient(900px 400px at 90% -5%,rgba(249,115,22,.06),transparent 60%),var(--bg)}
 .vh{padding:20px 24px 0;border-bottom:1px solid var(--line);padding-bottom:14px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;background:var(--bg);position:sticky;top:0;z-index:10}
 .vh h1{font-size:20px;font-weight:700}.vh .sub{font-size:12px;color:var(--txt3);margin-top:2px}
 .vb{padding:20px 24px;max-width:1400px}
@@ -45,7 +45,7 @@ button{font-family:inherit;cursor:pointer}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
 @media(max-width:1000px){.g3{grid-template-columns:1fr 1fr}}
 .btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:8px;border:1px solid var(--line2);background:var(--panel2);color:var(--txt);font-size:13px;font-weight:600;cursor:pointer;transition:.12s}
-.btn:hover{border-color:var(--accent);color:var(--a2)}.btn.primary{background:var(--accent);border-color:var(--accent);color:#FFFFFF}.btn.primary:hover{background:var(--a2);color:#1a0a00}
+.btn:hover{border-color:var(--accent);color:var(--a2)}.btn.primary{background:var(--accent);border-color:var(--accent);color:#1a0a00}.btn.primary:hover{background:var(--a2);color:#1a0a00}
 .btn.sm{padding:5px 10px;font-size:12px}.btn.danger{border-color:var(--red);color:var(--red);background:transparent}.btn.danger:hover{background:var(--rbg)}
 .btn.success{border-color:var(--green);color:var(--green);background:transparent}.btn.success:hover{background:var(--gbg)}
 table{width:100%;border-collapse:collapse;font-size:13px}
@@ -56,7 +56,7 @@ tbody td.r{text-align:right;font-family:monospace;font-size:12px;color:var(--txt
 tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
 .tbl{overflow-x:auto}
 .badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
-.badge.green{background:var(--gbg);color:#146C34}.badge.yellow{background:var(--ybg);color:#92400E}.badge.red{background:var(--rbg);color:#B91C1C}
+.badge.green{background:var(--gbg);color:#4ade80}.badge.yellow{background:var(--ybg);color:#facc15}.badge.red{background:var(--rbg);color:#f87171}
 .badge.blue{background:var(--bbg);color:var(--blue)}.badge.gray{background:var(--panel3);color:var(--txt3)}.badge.orange{background:var(--ad);color:var(--a2)}
 .fg{font-family:monospace;font-weight:700;font-size:13px;color:var(--txt)}
 .plate{font-family:monospace;font-weight:700;font-size:12px;background:#0d2547;color:#bcd6ff;border:1px solid #27457b;padding:2px 8px;border-radius:4px;letter-spacing:.04em;white-space:nowrap}
@@ -281,46 +281,50 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
 /* ══════════ LOGIN ══════════ */
 #login-screen{
   position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
-  background:var(--bg);
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 0%,rgba(34,211,238,.10),transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 100%,rgba(249,115,22,.08),transparent 60%),
+    linear-gradient(160deg,#05080d 0%,#0a0f17 50%,#070a10 100%);
 }
 #login-screen.hide{display:none}
 .login-box{
-  width:340px;padding:36px 32px;border-radius:14px;position:relative;
-  background:var(--panel);
-  border:1px solid var(--line);
-  box-shadow:0 12px 32px rgba(20,24,31,.08);
+  width:340px;padding:36px 32px;border-radius:18px;position:relative;
+  background:linear-gradient(180deg,rgba(18,26,40,.85),rgba(10,15,24,.92));
+  border:1px solid rgba(34,211,238,.16);
+  box-shadow:0 20px 60px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05);
+  backdrop-filter:blur(4px);
 }
-.login-mark{font-size:34px;text-align:center;margin-bottom:6px}
-.login-title{text-align:center;font-size:19px;font-weight:800;color:var(--txt);letter-spacing:.01em}
+.login-mark{font-size:38px;text-align:center;margin-bottom:6px;filter:drop-shadow(0 0 12px rgba(34,211,238,.4))}
+.login-title{text-align:center;font-size:19px;font-weight:800;color:var(--txt);letter-spacing:.02em}
 .login-sub{text-align:center;font-size:12px;color:var(--txt3);margin-top:3px;margin-bottom:26px}
 .login-users{display:flex;gap:8px;margin-bottom:16px}
 .login-user-btn{
-  flex:1;padding:10px 4px;border-radius:9px;border:1px solid var(--line);background:var(--bg2);
+  flex:1;padding:10px 4px;border-radius:10px;border:1px solid var(--bd);background:var(--bg2);
   color:var(--txt2);font-size:12px;font-weight:700;cursor:pointer;transition:.15s;text-align:center;
 }
-.login-user-btn:hover{border-color:var(--accent);color:var(--txt)}
-.login-user-btn.active{border-color:var(--accent);background:var(--ad);color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.login-user-btn:hover{border-color:rgba(34,211,238,.4);color:var(--txt)}
+.login-user-btn.active{border-color:var(--blue);background:rgba(34,211,238,.1);color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}
 .login-fg{margin-bottom:14px}
 .login-fg label{display:block;font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
 .login-fg input{
-  width:100%;padding:11px 14px;border-radius:9px;border:1px solid var(--line);
+  width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--bd);
   background:var(--bg);color:var(--txt);font-size:14px;
 }
-.login-fg input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--ad)}
+.login-fg input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(34,211,238,.12)}
 .login-btn{
-  width:100%;padding:12px;border-radius:9px;border:none;margin-top:6px;
-  background:var(--accent);color:#FFFFFF;font-weight:800;font-size:14px;
+  width:100%;padding:12px;border-radius:10px;border:none;margin-top:6px;
+  background:linear-gradient(135deg,var(--blue),#0e9fc4);color:#06121f;font-weight:800;font-size:14px;
   cursor:pointer;transition:.15s;
 }
-.login-btn:hover{background:var(--a2)}
+.login-btn:hover{filter:brightness(1.1)}
 .login-err{color:var(--red);font-size:12px;text-align:center;margin-top:10px;min-height:16px}
 #app-root.hide{display:none}
 .sb-user{
   display:flex;align-items:center;gap:9px;padding:11px 16px;margin-top:auto;
-  border-top:1px solid var(--line);font-size:12px;color:var(--txt2);
+  border-top:1px solid var(--bd);font-size:12px;color:var(--txt2);
 }
-.sb-user .av{width:26px;height:26px;border-radius:50%;background:var(--accent);
-  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#FFFFFF;flex-shrink:0}
+.sb-user .av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--accent));
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#06121f;flex-shrink:0}
 .sb-user .nm{flex:1;font-weight:700;color:var(--txt)}
 .sb-user .lo{cursor:pointer;color:var(--txt3);font-size:11px;text-decoration:underline;white-space:nowrap}
 .sb-user .lo:hover{color:var(--red)}
@@ -502,9 +506,28 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
     <div class="fg2" style="margin-top:8px">
       <input id="sucata-motivo-outro" placeholder="Descreva o motivo..." style="display:none;width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-size:14px">
     </div>
+    <div class="fg2" style="margin-top:8px"><label>Hodômetro atual do veículo (km)</label>
+      <input type="number" id="sucata-km-input" min="0" placeholder="ex: 531153" style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-size:14px">
+      <div class="hint" id="sucata-km-hint" style="font-size:11px;margin-top:3px"></div>
+    </div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn primary" style="flex:1;justify-content:center;background:var(--red);color:#fff" onclick="confirmarMotivoSucata()">Confirmar Sucateamento</button>
       <button class="btn" onclick="fecharMotivoSucata()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="km-modal" id="mov-modal">
+  <div class="km-box">
+    <h3>🔄 Confirmar Movimentação</h3>
+    <div class="hint" id="mov-info" style="margin-bottom:12px"></div>
+    <div class="fg2"><label>Hodômetro atual do veículo (km)</label>
+      <input type="number" id="mov-km-input" min="0" placeholder="ex: 531153" style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-size:14px">
+      <div class="hint" id="mov-km-hint" style="font-size:11px;margin-top:3px"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn primary" style="flex:1;justify-content:center;background:var(--green);color:#fff" onclick="confirmarMovimentacaoKm()">Salvar e Confirmar</button>
+      <button class="btn" onclick="fecharConfirmarMovimentacao()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1147,44 +1170,89 @@ async function dropPos(targetPos,targetPlaca,isCarr){
   const cav=PARES_DEFAULT[idxAtual][0];
   const carr=CFG.pairs[cav]||PARES_DEFAULT[idxAtual][1];
   const occ=P.find(p=>p.status==='veiculo'&&(isCarr?p.carreta===targetPlaca:p.cavalo===targetPlaca)&&p.posicao===targetPos);
-  const toSync=[];
-  if(from==='veiculo'){
-    if(srcPos===targetPos){ renderSidebar(); nav('frota-map',{idx:idxAtual}); return; }
-    if(occ&&occ.fogo!==fogo){occ.posicao=srcPos;addM(occ.fogo,'Rodízio',occ.cavalo,occ.carreta,srcPos,occ.sulcoMenor,0);toSync.push(occ);}
-    pneu.posicao=targetPos;
-    if(isCarr){pneu.carreta=targetPlaca;pneu.cavalo=null;}else{pneu.cavalo=targetPlaca;pneu.carreta=null;}
-    addM(fogo,'Rodízio',pneu.cavalo,pneu.carreta,targetPos,pneu.sulcoMenor,0);
-    toSync.push(pneu);
-    toast('Rodízio: '+fogo+' → '+targetPos,'#f97316');
-  } else {
-    if(occ){occ.status='almox';occ.cavalo=null;occ.carreta=null;occ.posicao=null;addM(occ.fogo,'Saída para Almoxarifado','','','',occ.sulcoMenor,0);toSync.push(occ);}
-    pneu.status='veiculo';pneu.posicao=targetPos;
-    const hodo=CFG.hodos[cav]||0;
-    pneu.kmInst=hodo;
-    if(isCarr){pneu.carreta=targetPlaca;pneu.cavalo=null;}else{pneu.cavalo=targetPlaca;pneu.carreta=null;}
-    addM(fogo,'Entrada em Veículo',pneu.cavalo,pneu.carreta,targetPos,pneu.sulcoMenor,0);
-    toSync.push(pneu);
-    toast(fogo+' montado em '+targetPos,'#22c55e');
-  }
-  renderSidebar(); nav('frota-map',{idx:idxAtual});
-  for(const p of toSync){ await syncPneu(p); }
+
+  if(from==='veiculo'&&srcPos===targetPos){ renderSidebar(); nav('frota-map',{idx:idxAtual}); return; }
+
+  // Não finaliza ainda — pede o KM do hodômetro pra confirmar a movimentação
+  const acao = from==='veiculo' ? 'Rodízio' : 'Entrada em Veículo';
+  const descricao = from==='veiculo'
+    ? `Rodízio: ${fogo} sai de ${srcPos} → entra em ${targetPos}` + (occ&&occ.fogo!==fogo?` (troca de lugar com ${occ.fogo})`:'')
+    : `Montagem: ${fogo} (estoque) → ${targetPos}`;
+  abrirConfirmarMovimentacao({
+    kind:'pos', fogo, from, srcPos, targetPos, targetPlaca, isCarr, cav, carr, idxAtual,
+    acao, descricao, occFogo: occ&&occ.fogo!==fogo ? occ.fogo : null
+  });
 }
 function dropZone(zone,cav,carr){
   if(!mDrag) return;
   const {fogo,from}=mDrag;
   if(zone==='sucata'){
-    // Sucatear pede o motivo antes de confirmar — não completa a ação se o usuário cancelar
-    abrirMotivoSucata(fogo, from);
+    // Sucatear pede o motivo (e o KM) antes de confirmar — não completa a ação se o usuário cancelar
+    abrirMotivoSucata(fogo, from, cav);
     return;
   }
-  const pneu=getPneu(fogo); if(!pneu){mDrag=null;return;}
-  if(from==='veiculo'){pneu.cavalo=null;pneu.carreta=null;pneu.posicao=null;}
-  pneu.status=zone;
+  const idxAtual = MAP_IDX;
   const t={'almox':'Saída para Almoxarifado','reforma':'Envio para Reforma'};
-  addM(fogo,t[zone]||zone,'','','',pneu.sulcoMenor,0);
-  toast(fogo+' → '+(zone==='almox'?'Almox.':'Reforma'),'#38bdf8');
-  mDrag=null;nav('frota-map',{idx:MAP_IDX});
-  syncPneu(pneu);
+  const descricao = `${fogo} → ${zone==='almox'?'Almoxarifado':'Reforma'}`;
+  abrirConfirmarMovimentacao({
+    kind:'zone', fogo, from, zone, cav, carr, idxAtual,
+    acao: t[zone]||zone, descricao, occFogo:null
+  });
+}
+
+// ── Confirmar Movimentação (pede o KM do hodômetro antes de fechar qualquer troca) ──
+let PEND_MOV=null;
+function abrirConfirmarMovimentacao(dados){
+  PEND_MOV = dados;
+  const cavRef = dados.cav; // veículo de referência pro hodômetro
+  const hodoAtual = CFG.hodos[cavRef]||0;
+  document.getElementById('mov-info').textContent = dados.descricao;
+  document.getElementById('mov-km-input').value = hodoAtual||'';
+  document.getElementById('mov-km-hint').textContent = hodoAtual ? 'Hodômetro atual registrado: '+fkm(hodoAtual) : 'Sem hodômetro registrado ainda para '+cavRef;
+  document.getElementById('mov-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('mov-km-input').focus(),50);
+}
+function fecharConfirmarMovimentacao(){
+  document.getElementById('mov-modal').classList.remove('open');
+  const idx = PEND_MOV ? PEND_MOV.idxAtual : MAP_IDX;
+  PEND_MOV = null;
+  renderSidebar(); nav('frota-map',{idx});
+}
+async function confirmarMovimentacaoKm(){
+  if(!PEND_MOV) return;
+  const d = PEND_MOV;
+  const km = parseInt(document.getElementById('mov-km-input').value)||0;
+  if(km<=0){ toast('Informe o hodômetro atual do veículo', '#eab308'); return; }
+  const atual = CFG.hodos[d.cav]||0;
+  if(km<atual){ toast('KM não pode ser menor que o hodômetro atual ('+fkm(atual)+')', '#ef4444'); return; }
+
+  const pneu=getPneu(d.fogo); if(!pneu){ toast('Pneu não encontrado — tela atualizada','#eab308'); fecharConfirmarMovimentacao(); return; }
+  const toSync=[];
+  CFG.hodos[d.cav]=km;
+
+  if(d.kind==='pos'){
+    const occ = d.occFogo ? getPneu(d.occFogo) : null;
+    if(occ){ occ.posicao=d.srcPos; addM(occ.fogo,'Rodízio',occ.cavalo,occ.carreta,d.srcPos,occ.sulcoMenor,km); toSync.push(occ); }
+    pneu.posicao=d.targetPos;
+    if(d.isCarr){ pneu.carreta=d.targetPlaca; pneu.cavalo=null; } else { pneu.cavalo=d.targetPlaca; pneu.carreta=null; }
+    if(d.from!=='veiculo'){ pneu.status='veiculo'; pneu.kmInst=km; }
+    addM(d.fogo, d.acao, pneu.cavalo, pneu.carreta, d.targetPos, pneu.sulcoMenor, km);
+    toSync.push(pneu);
+    toast(d.acao+': '+d.fogo+' → '+d.targetPos+' (hodômetro '+fkm(km)+')', d.from==='veiculo'?'#f97316':'#22c55e');
+  } else {
+    if(d.from==='veiculo'){ pneu.cavalo=null; pneu.carreta=null; pneu.posicao=null; }
+    pneu.status=d.zone;
+    addM(d.fogo, d.acao, '', '', '', pneu.sulcoMenor, km);
+    toSync.push(pneu);
+    toast(d.fogo+' → '+(d.zone==='almox'?'Almox.':'Reforma')+' (hodômetro '+fkm(km)+')', '#38bdf8');
+  }
+
+  const idxVolta = d.idxAtual;
+  document.getElementById('mov-modal').classList.remove('open');
+  PEND_MOV = null;
+  renderSidebar(); nav('frota-map',{idx:idxVolta});
+  await syncHodometro(d.cav, km);
+  for(const p of toSync){ await syncPneu(p); }
 }
 
 // ── Motivo do Sucateamento ──
@@ -1193,13 +1261,17 @@ const MOTIVOS_SUCATA = [
   'Corte lateral','Separação de lona/carcaça','Impacto / dano mecânico','Reforma reprovada','Outro'
 ];
 let SUCATA_FOGO=null, SUCATA_FROM=null, SUCATA_MAP_IDX=null;
-function abrirMotivoSucata(fogo, from){
-  SUCATA_FOGO=fogo; SUCATA_FROM=from; SUCATA_MAP_IDX=MAP_IDX;
+let SUCATA_CAV=null;
+function abrirMotivoSucata(fogo, from, cav){
+  SUCATA_FOGO=fogo; SUCATA_FROM=from; SUCATA_MAP_IDX=MAP_IDX; SUCATA_CAV=cav||MAP_IDX!=null&&PARES_DEFAULT[MAP_IDX]?PARES_DEFAULT[MAP_IDX][0]:null;
   const sel=document.getElementById('sucata-motivo-select');
   sel.innerHTML='<option value="">Selecione o motivo...</option>'+MOTIVOS_SUCATA.map(m=>`<option value="${m}">${m}</option>`).join('');
   document.getElementById('sucata-motivo-outro').style.display='none';
   document.getElementById('sucata-motivo-outro').value='';
   document.getElementById('sucata-info').textContent='Pneu '+fogo;
+  const hodoAtual=CFG.hodos[SUCATA_CAV]||0;
+  document.getElementById('sucata-km-input').value=hodoAtual||'';
+  document.getElementById('sucata-km-hint').textContent=hodoAtual?'Hodômetro atual registrado: '+fkm(hodoAtual):'Sem hodômetro registrado ainda para '+SUCATA_CAV;
   document.getElementById('sucata-modal').classList.add('open');
 }
 function sucataMotivoMudou(v){
@@ -1216,18 +1288,25 @@ async function confirmarMotivoSucata(){
   if(!sel){ toast('Selecione o motivo do sucateamento', '#eab308'); return; }
   const motivo = sel==='Outro' ? (outro||'Outro (não especificado)') : sel;
 
+  const km=parseInt(document.getElementById('sucata-km-input').value)||0;
+  const atual=CFG.hodos[SUCATA_CAV]||0;
+  if(km<=0){ toast('Informe o hodômetro atual do veículo', '#eab308'); return; }
+  if(km<atual){ toast('KM não pode ser menor que o hodômetro atual ('+fkm(atual)+')', '#ef4444'); return; }
+
   const pneu=getPneu(SUCATA_FOGO);
   const idxVolta=SUCATA_MAP_IDX;
   if(!pneu){ fecharMotivoSucata(); return; }
   if(SUCATA_FROM==='veiculo'){ pneu.cavalo=null; pneu.carreta=null; pneu.posicao=null; }
   pneu.status='sucata';
   pneu.motivoSucata=motivo;
-  addM(pneu.fogo,'Sucata','','','',pneu.sulcoMenor,0);
-  toast(pneu.fogo+' → Sucata ('+motivo+')','#ef4444');
+  if(SUCATA_CAV) CFG.hodos[SUCATA_CAV]=km;
+  addM(pneu.fogo,'Sucata','','','',pneu.sulcoMenor,km);
+  toast(pneu.fogo+' → Sucata ('+motivo+') · hodômetro '+fkm(km),'#ef4444');
 
   document.getElementById('sucata-modal').classList.remove('open');
   mDrag=null; SUCATA_FOGO=null;
-  if(idxVolta!=null) nav('frota-map',{idx:idxVolta});
+  if(idxVolta!=null){ renderSidebar(); nav('frota-map',{idx:idxVolta}); }
+  if(SUCATA_CAV) await syncHodometro(SUCATA_CAV, km);
   await syncPneu(pneu);
 }
 
@@ -1291,6 +1370,7 @@ async function saveKm(){
 }
 document.getElementById('km-modal').onclick=e=>{if(e.target===document.getElementById('km-modal'))closeKm();};
 document.getElementById('sucata-modal').onclick=e=>{if(e.target===document.getElementById('sucata-modal'))fecharMotivoSucata();};
+document.getElementById('mov-modal').onclick=e=>{if(e.target===document.getElementById('mov-modal'))fecharConfirmarMovimentacao();};
 
 // ============================
 //  ESTOQUE + REFORMADORA
@@ -1474,25 +1554,25 @@ function renderAlocar(mc){
         <div class="ch"><h2>🚛 Veículos com pendência (${comVaga.length})</h2></div>
         <div class="cb" style="padding-top:0">
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-            ${nEstepe?`<span style="font-size:11px;background:rgba(180,83,9,.15);color:var(--yellow);padding:3px 9px;border-radius:20px;font-weight:600">🔧 ${nEstepe} só estepe</span>`:''}
-            ${nParcial?`<span style="font-size:11px;background:rgba(15,124,135,.15);color:var(--accent);padding:3px 9px;border-radius:20px;font-weight:600">⚠️ ${nParcial} parcial</span>`:''}
-            ${nNovas?`<span style="font-size:11px;background:rgba(29,78,216,.13);color:var(--blue);padding:3px 9px;border-radius:20px;font-weight:600">🆕 ${nNovas} novas (sem pneus)</span>`:''}
+            ${nEstepe?`<span style="font-size:11px;background:rgba(234,179,8,.15);color:var(--yellow);padding:3px 9px;border-radius:20px;font-weight:600">🔧 ${nEstepe} só estepe</span>`:''}
+            ${nParcial?`<span style="font-size:11px;background:rgba(249,115,22,.15);color:var(--accent);padding:3px 9px;border-radius:20px;font-weight:600">⚠️ ${nParcial} parcial</span>`:''}
+            ${nNovas?`<span style="font-size:11px;background:rgba(56,189,248,.13);color:var(--blue);padding:3px 9px;border-radius:20px;font-weight:600">🆕 ${nNovas} novas (sem pneus)</span>`:''}
           </div>
           <div style="max-height:540px;overflow-y:auto">
           ${comVaga.length?comVaga.map(v=>{
             const cor=v.tipo==='estepe'?'var(--yellow)':v.tipo==='nova'?'var(--blue)':'var(--accent)';
             const icone=v.tipo==='estepe'?'🔩':v.tipo==='nova'?'🆕':'⚠️';
-            const bg=v.tipo==='estepe'?'rgba(180,83,9,.07)':v.tipo==='nova'?'rgba(29,78,216,.06)':'rgba(15,124,135,.05)';
+            const bg=v.tipo==='estepe'?'rgba(234,179,8,.07)':v.tipo==='nova'?'rgba(56,189,248,.06)':'rgba(249,115,22,.05)';
             const uLbl=v.unidade==='cavalo'?'Cavalo':'Carreta';
             const irPlaca=v.cav||v.carr;
             return `<div style="padding:10px 11px;border:1px solid var(--bd);border-left:3px solid ${cor};border-radius:8px;background:${bg};margin-bottom:7px">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
                 <div style="font-family:monospace;font-weight:700;color:var(--txt);font-size:13px">${icone} ${v.placa} <span style="font-size:10px;font-family:inherit;font-weight:500;color:var(--txt3)">(${uLbl})</span></div>
-                <span style="background:${cor};color:#FFFFFF;font-weight:700;padding:2px 8px;border-radius:20px;font-size:11px">${v.tot}</span>
+                <span style="background:${cor};color:#06121f;font-weight:700;padding:2px 8px;border-radius:20px;font-size:11px">${v.tot}</span>
               </div>
               <div style="font-size:11px;color:var(--txt3);margin-bottom:6px">${v.sub}</div>
               ${v.tipo!=='nova'?`<div style="display:flex;flex-wrap:wrap;gap:4px">
-                ${v.vagasPos.map(pos=>`<span style="font-size:10px;font-family:monospace;background:${v.unidade==='cavalo'?'rgba(29,78,216,.1)':'rgba(15,124,135,.08)'};border:1px solid ${v.unidade==='cavalo'?'rgba(29,78,216,.25)':'rgba(15,124,135,.2)'};color:${v.unidade==='cavalo'?'var(--blue)':'var(--accent)'};padding:1px 6px;border-radius:5px" title="${POS_LBL[pos]||pos}">${pos==='Estepe'?'🔩 Estepe':pos}</span>`).join('')}
+                ${v.vagasPos.map(pos=>`<span style="font-size:10px;font-family:monospace;background:${v.unidade==='cavalo'?'rgba(34,211,238,.1)':'rgba(249,115,22,.08)'};border:1px solid ${v.unidade==='cavalo'?'rgba(34,211,238,.25)':'rgba(249,115,22,.2)'};color:${v.unidade==='cavalo'?'var(--blue)':'var(--accent)'};padding:1px 6px;border-radius:5px" title="${POS_LBL[pos]||pos}">${pos==='Estepe'?'🔩 Estepe':pos}</span>`).join('')}
               </div>`:''}
               ${irPlaca?`<button class="btn" onclick="irMapaVeiculo('${irPlaca}')" style="margin-top:7px;background:var(--bg2);border:1px solid var(--bd);color:var(--txt2);padding:4px 11px;font-size:11px">Ver no mapa →</button>`:''}
             </div>`;
