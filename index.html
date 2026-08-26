@@ -806,7 +806,7 @@ let VIEW='home', VP={}, KM_CAV=null;
 let mDrag=null, sTab='almox', MAP_IDX=null, KM_ORIGEM='frota-map';
 // Movimentações pendentes — acumuladas localmente enquanto o usuário mexe no veículo,
 // só vão pro servidor quando ele aperta "Salvar Movimentações" (junto com o hodômetro)
-let PEND_LOG=[], PEND_FOGOS=new Set(), PEND_CAV=null;
+let PEND_LOG=[], PEND_FOGOS=new Set(), PEND_CAV=null, SALVAR_MOV_CAV=null;
 
 function nav(v,p={}){
   // Se tem movimentação pendente de salvar, avisa antes de sair do veículo em edição
@@ -966,10 +966,8 @@ function renderFrotaMap(mc,idx){
     <h1><span class="plate">${cav}</span> + <span class="plate">${carr}</span></h1>
     <div class="sub">Conjunto ${idx+1}/${PARES_DEFAULT.length}${temPendente?` · <span style="color:var(--accent);font-weight:700">${PEND_FOGOS.size} pendente(s)</span>`:''}</div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      ${temPendente?`
-        <button class="btn sm" style="background:var(--green);color:#fff;font-weight:700;animation:pulseSave 1.6s ease-in-out infinite" onclick="abrirSalvarMovimentacoes()">💾 Salvar Movimentações (${PEND_FOGOS.size})</button>
-        <button class="btn sm" onclick="descartarMovimentacoes()">✕ Descartar</button>
-      `:`<button class="btn sm" onclick="openKmModal('${cav}')">📏 KM: ${hodo?fkm(hodo):'Atualizar'}</button>`}
+      <button class="btn sm" style="background:var(--green);color:#fff;font-weight:700;${temPendente?'animation:pulseSave 1.6s ease-in-out infinite':''}" onclick="abrirSalvarMovimentacoes('${cav}')">💾 Salvar${temPendente?' ('+PEND_FOGOS.size+')':''} · KM: ${hodo?fkm(hodo):'—'}</button>
+      ${temPendente?`<button class="btn sm" onclick="descartarMovimentacoes()">✕ Descartar</button>`:''}
       <button class="btn sm" onclick="nav('frota-map',{idx:${Math.max(0,idx-1)}})">←</button>
       <button class="btn sm" onclick="nav('frota-map',{idx:${Math.min(PARES_DEFAULT.length-1,idx+1)}})">→</button>
     </div>
@@ -1233,13 +1231,18 @@ function dropZone(zone,cav,carr){
 }
 
 // ── Salvar Movimentações em lote (pede o KM do hodômetro UMA vez só, no final) ──
-function abrirSalvarMovimentacoes(){
-  if(!PEND_CAV || PEND_FOGOS.size===0) return;
-  const hodoAtual = CFG.hodos[PEND_CAV]||0;
-  const resumo = PEND_LOG.map(m=>`${m.fogo} — ${m.tipo}${m.posicao?' ('+m.posicao+')':''}`).join('<br>');
-  document.getElementById('salvar-mov-info').innerHTML = `<b>${PEND_FOGOS.size} pneu(s) alterado(s) em ${PEND_CAV}:</b><br>${resumo}`;
+function abrirSalvarMovimentacoes(cavAtual){
+  // Sempre abre — mesmo sem nenhuma movimentação pendente (nesse caso, só atualiza o hodômetro)
+  const cav = PEND_CAV || cavAtual;
+  const hodoAtual = CFG.hodos[cav]||0;
+  const temPendente = PEND_CAV===cav && PEND_FOGOS.size>0;
+  const resumo = temPendente
+    ? `<b>${PEND_FOGOS.size} pneu(s) alterado(s) em ${cav}:</b><br>` + PEND_LOG.map(m=>`${m.fogo} — ${m.tipo}${m.posicao?' ('+m.posicao+')':''}`).join('<br>')
+    : `Nenhuma movimentação de pneu pendente em ${cav}. Você pode apenas atualizar o hodômetro.`;
+  SALVAR_MOV_CAV = cav;
+  document.getElementById('salvar-mov-info').innerHTML = resumo;
   document.getElementById('salvar-mov-km-input').value = hodoAtual||'';
-  document.getElementById('salvar-mov-km-hint').textContent = hodoAtual ? 'Hodômetro atual registrado: '+fkm(hodoAtual) : 'Sem hodômetro registrado ainda para '+PEND_CAV;
+  document.getElementById('salvar-mov-km-hint').textContent = hodoAtual ? 'Hodômetro atual registrado: '+fkm(hodoAtual) : 'Sem hodômetro registrado ainda para '+cav;
   document.getElementById('salvar-mov-modal').classList.add('open');
   setTimeout(()=>document.getElementById('salvar-mov-km-input').focus(),50);
 }
@@ -1247,27 +1250,30 @@ function fecharSalvarMovimentacoes(){
   document.getElementById('salvar-mov-modal').classList.remove('open');
 }
 async function confirmarSalvarMovimentacoes(){
+  const cav = SALVAR_MOV_CAV;
   const km = parseInt(document.getElementById('salvar-mov-km-input').value)||0;
   if(km<=0){ toast('Informe o hodômetro atual do veículo', '#eab308'); return; }
-  const atual = CFG.hodos[PEND_CAV]||0;
+  const atual = CFG.hodos[cav]||0;
   if(km<atual){ toast('KM não pode ser menor que o hodômetro atual ('+fkm(atual)+')', '#ef4444'); return; }
 
   const btn=document.getElementById('salvar-mov-btn');
   if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
 
-  CFG.hodos[PEND_CAV]=km;
-  PEND_LOG.forEach(m=>addM(m.fogo, m.tipo, m.cavalo, m.carreta, m.posicao, m.sulco, km));
+  CFG.hodos[cav]=km;
+  const temPendente = PEND_CAV===cav && PEND_FOGOS.size>0;
+  if(temPendente) PEND_LOG.forEach(m=>addM(m.fogo, m.tipo, m.cavalo, m.carreta, m.posicao, m.sulco, km));
 
-  const fogos=[...PEND_FOGOS];
-  const cavSalvo=PEND_CAV, idxAtual=MAP_IDX;
+  const fogos = temPendente ? [...PEND_FOGOS] : [];
+  const idxAtual=MAP_IDX;
   document.getElementById('salvar-mov-modal').classList.remove('open');
-  PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_CAV=null;
-  toast('Salvando '+fogos.length+' pneu(s) e hodômetro '+fkm(km)+'...', '#38bdf8');
+  if(temPendente){ PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_CAV=null; }
+  SALVAR_MOV_CAV=null;
+  toast('Salvando'+(fogos.length?' '+fogos.length+' pneu(s) e':'')+' hodômetro '+fkm(km)+'...', '#38bdf8');
   renderSidebar(); nav('frota-map',{idx:idxAtual});
 
-  await syncHodometro(cavSalvo, km);
+  await syncHodometro(cav, km);
   for(const f of fogos){ const p=getPneu(f); if(p) await syncPneu(p); }
-  toast('✓ Movimentações salvas com sucesso','#22c55e');
+  toast('✓ Salvo com sucesso','#22c55e');
 }
 function descartarMovimentacoes(silencioso){
   PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_CAV=null;
