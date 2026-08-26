@@ -364,6 +364,7 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
 .exec-table td{padding:10px 10px;border-bottom:1px solid #EEF0F3;color:#12181F}
 .exec-table td.r,.exec-table th.r{text-align:right;font-variant-numeric:tabular-nums}
 .exec-foot{margin-top:8px;padding-top:16px;border-top:1px solid #E3E7ED;font-size:10.5px;color:#8A93A2;display:flex;justify-content:space-between}
+@keyframes pulseSave{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}50%{box-shadow:0 0 0 6px rgba(34,197,94,0)}}
 @media print{
   .exec-wrap{background:#fff!important;padding:0!important;border-radius:0!important}
 }
@@ -506,10 +507,6 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
     <div class="fg2" style="margin-top:8px">
       <input id="sucata-motivo-outro" placeholder="Descreva o motivo..." style="display:none;width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-size:14px">
     </div>
-    <div class="fg2" style="margin-top:8px"><label>Hodômetro atual do veículo (km)</label>
-      <input type="number" id="sucata-km-input" min="0" placeholder="ex: 531153" style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-size:14px">
-      <div class="hint" id="sucata-km-hint" style="font-size:11px;margin-top:3px"></div>
-    </div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn primary" style="flex:1;justify-content:center;background:var(--red);color:#fff" onclick="confirmarMotivoSucata()">Confirmar Sucateamento</button>
       <button class="btn" onclick="fecharMotivoSucata()">Cancelar</button>
@@ -517,17 +514,17 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
   </div>
 </div>
 
-<div class="km-modal" id="mov-modal">
+<div class="km-modal" id="salvar-mov-modal">
   <div class="km-box">
-    <h3>🔄 Confirmar Movimentação</h3>
-    <div class="hint" id="mov-info" style="margin-bottom:12px"></div>
+    <h3>💾 Salvar Movimentações</h3>
+    <div class="hint" id="salvar-mov-info" style="margin-bottom:14px;line-height:1.6"></div>
     <div class="fg2"><label>Hodômetro atual do veículo (km)</label>
-      <input type="number" id="mov-km-input" min="0" placeholder="ex: 531153" style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-size:14px">
-      <div class="hint" id="mov-km-hint" style="font-size:11px;margin-top:3px"></div>
+      <input type="number" id="salvar-mov-km-input" min="0" placeholder="ex: 531153" style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-size:14px">
+      <div class="hint" id="salvar-mov-km-hint" style="font-size:11px;margin-top:3px"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px">
-      <button class="btn primary" style="flex:1;justify-content:center;background:var(--green);color:#fff" onclick="confirmarMovimentacaoKm()">Salvar e Confirmar</button>
-      <button class="btn" onclick="fecharConfirmarMovimentacao()">Cancelar</button>
+      <button class="btn primary" id="salvar-mov-btn" style="flex:1;justify-content:center;background:var(--green);color:#fff" onclick="confirmarSalvarMovimentacoes()">Salvar Tudo</button>
+      <button class="btn" onclick="fecharSalvarMovimentacoes()">Voltar</button>
     </div>
   </div>
 </div>
@@ -807,8 +804,22 @@ let ALOCQ="",ALOC_FOGO=null;
 let KMQ="";
 let VIEW='home', VP={}, KM_CAV=null;
 let mDrag=null, sTab='almox', MAP_IDX=null, KM_ORIGEM='frota-map';
+// Movimentações pendentes — acumuladas localmente enquanto o usuário mexe no veículo,
+// só vão pro servidor quando ele aperta "Salvar Movimentações" (junto com o hodômetro)
+let PEND_LOG=[], PEND_FOGOS=new Set(), PEND_CAV=null;
 
-function nav(v,p={}){VIEW=v;VP=p;renderSidebar();renderMain();}
+function nav(v,p={}){
+  // Se tem movimentação pendente de salvar, avisa antes de sair do veículo em edição
+  if(PEND_FOGOS.size>0 && PEND_CAV){
+    const saindoDoVeiculo = !(v==='frota-map' && p && PARES_DEFAULT[p.idx] && PARES_DEFAULT[p.idx][0]===PEND_CAV);
+    if(saindoDoVeiculo){
+      const sair=confirm('Você tem '+PEND_FOGOS.size+' movimentação(ões) não salva(s) em '+PEND_CAV+'.\n\nSair sem salvar? As mudanças serão descartadas.');
+      if(!sair) return;
+      descartarMovimentacoes(true);
+    }
+  }
+  VIEW=v;VP=p;renderSidebar();renderMain();
+}
 function renderSidebar(){
   document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
   const el=document.getElementById('sb-'+VIEW);
@@ -949,12 +960,16 @@ function renderFrotaMap(mc,idx){
   const nc=vp.filter(p=>p.sulcoMenor<3).length;
   const na=vp.filter(p=>p.sulcoMenor>=3&&p.sulcoMenor<6).length;
   const cpkMed=vp.filter(p=>cpk(p)>0).reduce((s,p,_,a)=>s+cpk(p)/a.length,0);
+  const temPendente = PEND_CAV===cav && PEND_FOGOS.size>0;
   mc.innerHTML=`<div class="vh" style="flex-wrap:wrap;gap:8px">
     <div><div class="back" onclick="nav('frota')">← Frota</div>
     <h1><span class="plate">${cav}</span> + <span class="plate">${carr}</span></h1>
-    <div class="sub">Conjunto ${idx+1}/${PARES_DEFAULT.length}</div></div>
+    <div class="sub">Conjunto ${idx+1}/${PARES_DEFAULT.length}${temPendente?` · <span style="color:var(--accent);font-weight:700">${PEND_FOGOS.size} pendente(s)</span>`:''}</div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn sm" onclick="openKmModal('${cav}')">📏 KM: ${hodo?fkm(hodo):'Atualizar'}</button>
+      ${temPendente?`
+        <button class="btn sm" style="background:var(--green);color:#fff;font-weight:700;animation:pulseSave 1.6s ease-in-out infinite" onclick="abrirSalvarMovimentacoes()">💾 Salvar Movimentações (${PEND_FOGOS.size})</button>
+        <button class="btn sm" onclick="descartarMovimentacoes()">✕ Descartar</button>
+      `:`<button class="btn sm" onclick="openKmModal('${cav}')">📏 KM: ${hodo?fkm(hodo):'Atualizar'}</button>`}
       <button class="btn sm" onclick="nav('frota-map',{idx:${Math.max(0,idx-1)}})">←</button>
       <button class="btn sm" onclick="nav('frota-map',{idx:${Math.min(PARES_DEFAULT.length-1,idx+1)}})">→</button>
     </div>
@@ -1155,104 +1170,109 @@ function setupDZ(cav,carr){
 function clrOver(){document.querySelectorAll('.over').forEach(e=>e.classList.remove('over'));}
 function setSTab(t){sTab=t;nav('frota-map',{idx:MAP_IDX});}
 
-async function dropPos(targetPos,targetPlaca,isCarr){
+// Marca que existe alteração pendente nesse veículo (a tela vai mostrar o botão Salvar)
+function marcarPendente(cav, fogos){
+  PEND_CAV = cav;
+  fogos.forEach(f=>PEND_FOGOS.add(f));
+}
+
+function dropPos(targetPos,targetPlaca,isCarr){
   if(!mDrag) return;
   const {fogo,from,pos:srcPos}=mDrag;
   mDrag=null;
   const idxAtual = MAP_IDX;
-
-  // Busca a planilha fresquinha ANTES de decidir — evita agir com base numa posição
-  // que já mudou de dono nos últimos segundos (a tela só atualiza sozinha a cada 20s)
-  toast('Conferindo posição...', '#38bdf8');
-  await load();
-
-  const pneu=getPneu(fogo); if(!pneu){ toast('Pneu não encontrado — tela atualizada', '#eab308'); renderSidebar(); nav('frota-map',{idx:idxAtual}); return; }
+  const pneu=getPneu(fogo); if(!pneu) return;
   const cav=PARES_DEFAULT[idxAtual][0];
   const carr=CFG.pairs[cav]||PARES_DEFAULT[idxAtual][1];
   const occ=P.find(p=>p.status==='veiculo'&&(isCarr?p.carreta===targetPlaca:p.cavalo===targetPlaca)&&p.posicao===targetPos);
 
-  if(from==='veiculo'&&srcPos===targetPos){ renderSidebar(); nav('frota-map',{idx:idxAtual}); return; }
+  if(from==='veiculo'&&srcPos===targetPos) return; // soltou no mesmo lugar
 
-  // Não finaliza ainda — pede o KM do hodômetro pra confirmar a movimentação
-  const acao = from==='veiculo' ? 'Rodízio' : 'Entrada em Veículo';
-  const descricao = from==='veiculo'
-    ? `Rodízio: ${fogo} sai de ${srcPos} → entra em ${targetPos}` + (occ&&occ.fogo!==fogo?` (troca de lugar com ${occ.fogo})`:'')
-    : `Montagem: ${fogo} (estoque) → ${targetPos}`;
-  abrirConfirmarMovimentacao({
-    kind:'pos', fogo, from, srcPos, targetPos, targetPlaca, isCarr, cav, carr, idxAtual,
-    acao, descricao, occFogo: occ&&occ.fogo!==fogo ? occ.fogo : null
-  });
+  const tocados=[fogo];
+  if(from==='veiculo'){
+    if(occ&&occ.fogo!==fogo){
+      occ.posicao=srcPos;
+      PEND_LOG.push({fogo:occ.fogo,tipo:'Rodízio',cavalo:occ.cavalo,carreta:occ.carreta,posicao:srcPos,sulco:occ.sulcoMenor});
+      tocados.push(occ.fogo);
+    }
+    pneu.posicao=targetPos;
+    if(isCarr){pneu.carreta=targetPlaca;pneu.cavalo=null;}else{pneu.cavalo=targetPlaca;pneu.carreta=null;}
+    PEND_LOG.push({fogo,tipo:'Rodízio',cavalo:pneu.cavalo,carreta:pneu.carreta,posicao:targetPos,sulco:pneu.sulcoMenor});
+    toast('Rodízio (pendente): '+fogo+' → '+targetPos+' — clique em Salvar quando terminar','#f97316');
+  } else {
+    if(occ){
+      occ.status='almox'; occ.cavalo=null; occ.carreta=null; occ.posicao=null;
+      PEND_LOG.push({fogo:occ.fogo,tipo:'Saída para Almoxarifado',cavalo:'',carreta:'',posicao:'',sulco:occ.sulcoMenor});
+      tocados.push(occ.fogo);
+    }
+    pneu.status='veiculo'; pneu.posicao=targetPos;
+    if(isCarr){pneu.carreta=targetPlaca;pneu.cavalo=null;}else{pneu.cavalo=targetPlaca;pneu.carreta=null;}
+    PEND_LOG.push({fogo,tipo:'Entrada em Veículo',cavalo:pneu.cavalo,carreta:pneu.carreta,posicao:targetPos,sulco:pneu.sulcoMenor});
+    toast('Montagem (pendente): '+fogo+' → '+targetPos+' — clique em Salvar quando terminar','#22c55e');
+  }
+  marcarPendente(cav, tocados);
+  renderMain();
 }
 function dropZone(zone,cav,carr){
   if(!mDrag) return;
   const {fogo,from}=mDrag;
   if(zone==='sucata'){
-    // Sucatear pede o motivo (e o KM) antes de confirmar — não completa a ação se o usuário cancelar
+    // Sucatear sempre pede o motivo na hora (mas só entra na fila — não salva ainda)
     abrirMotivoSucata(fogo, from, cav);
     return;
   }
-  const idxAtual = MAP_IDX;
+  const pneu=getPneu(fogo); if(!pneu){mDrag=null;return;}
+  if(from==='veiculo'){pneu.cavalo=null;pneu.carreta=null;pneu.posicao=null;}
+  pneu.status=zone;
   const t={'almox':'Saída para Almoxarifado','reforma':'Envio para Reforma'};
-  const descricao = `${fogo} → ${zone==='almox'?'Almoxarifado':'Reforma'}`;
-  abrirConfirmarMovimentacao({
-    kind:'zone', fogo, from, zone, cav, carr, idxAtual,
-    acao: t[zone]||zone, descricao, occFogo:null
-  });
+  PEND_LOG.push({fogo,tipo:t[zone]||zone,cavalo:'',carreta:'',posicao:'',sulco:pneu.sulcoMenor});
+  marcarPendente(cav, [fogo]);
+  toast(fogo+' → '+(zone==='almox'?'Almox.':'Reforma')+' (pendente) — clique em Salvar quando terminar','#38bdf8');
+  mDrag=null;
+  renderMain();
 }
 
-// ── Confirmar Movimentação (pede o KM do hodômetro antes de fechar qualquer troca) ──
-let PEND_MOV=null;
-function abrirConfirmarMovimentacao(dados){
-  PEND_MOV = dados;
-  const cavRef = dados.cav; // veículo de referência pro hodômetro
-  const hodoAtual = CFG.hodos[cavRef]||0;
-  document.getElementById('mov-info').textContent = dados.descricao;
-  document.getElementById('mov-km-input').value = hodoAtual||'';
-  document.getElementById('mov-km-hint').textContent = hodoAtual ? 'Hodômetro atual registrado: '+fkm(hodoAtual) : 'Sem hodômetro registrado ainda para '+cavRef;
-  document.getElementById('mov-modal').classList.add('open');
-  setTimeout(()=>document.getElementById('mov-km-input').focus(),50);
+// ── Salvar Movimentações em lote (pede o KM do hodômetro UMA vez só, no final) ──
+function abrirSalvarMovimentacoes(){
+  if(!PEND_CAV || PEND_FOGOS.size===0) return;
+  const hodoAtual = CFG.hodos[PEND_CAV]||0;
+  const resumo = PEND_LOG.map(m=>`${m.fogo} — ${m.tipo}${m.posicao?' ('+m.posicao+')':''}`).join('<br>');
+  document.getElementById('salvar-mov-info').innerHTML = `<b>${PEND_FOGOS.size} pneu(s) alterado(s) em ${PEND_CAV}:</b><br>${resumo}`;
+  document.getElementById('salvar-mov-km-input').value = hodoAtual||'';
+  document.getElementById('salvar-mov-km-hint').textContent = hodoAtual ? 'Hodômetro atual registrado: '+fkm(hodoAtual) : 'Sem hodômetro registrado ainda para '+PEND_CAV;
+  document.getElementById('salvar-mov-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('salvar-mov-km-input').focus(),50);
 }
-function fecharConfirmarMovimentacao(){
-  document.getElementById('mov-modal').classList.remove('open');
-  const idx = PEND_MOV ? PEND_MOV.idxAtual : MAP_IDX;
-  PEND_MOV = null;
-  renderSidebar(); nav('frota-map',{idx});
+function fecharSalvarMovimentacoes(){
+  document.getElementById('salvar-mov-modal').classList.remove('open');
 }
-async function confirmarMovimentacaoKm(){
-  if(!PEND_MOV) return;
-  const d = PEND_MOV;
-  const km = parseInt(document.getElementById('mov-km-input').value)||0;
+async function confirmarSalvarMovimentacoes(){
+  const km = parseInt(document.getElementById('salvar-mov-km-input').value)||0;
   if(km<=0){ toast('Informe o hodômetro atual do veículo', '#eab308'); return; }
-  const atual = CFG.hodos[d.cav]||0;
+  const atual = CFG.hodos[PEND_CAV]||0;
   if(km<atual){ toast('KM não pode ser menor que o hodômetro atual ('+fkm(atual)+')', '#ef4444'); return; }
 
-  const pneu=getPneu(d.fogo); if(!pneu){ toast('Pneu não encontrado — tela atualizada','#eab308'); fecharConfirmarMovimentacao(); return; }
-  const toSync=[];
-  CFG.hodos[d.cav]=km;
+  const btn=document.getElementById('salvar-mov-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
 
-  if(d.kind==='pos'){
-    const occ = d.occFogo ? getPneu(d.occFogo) : null;
-    if(occ){ occ.posicao=d.srcPos; addM(occ.fogo,'Rodízio',occ.cavalo,occ.carreta,d.srcPos,occ.sulcoMenor,km); toSync.push(occ); }
-    pneu.posicao=d.targetPos;
-    if(d.isCarr){ pneu.carreta=d.targetPlaca; pneu.cavalo=null; } else { pneu.cavalo=d.targetPlaca; pneu.carreta=null; }
-    if(d.from!=='veiculo'){ pneu.status='veiculo'; pneu.kmInst=km; }
-    addM(d.fogo, d.acao, pneu.cavalo, pneu.carreta, d.targetPos, pneu.sulcoMenor, km);
-    toSync.push(pneu);
-    toast(d.acao+': '+d.fogo+' → '+d.targetPos+' (hodômetro '+fkm(km)+')', d.from==='veiculo'?'#f97316':'#22c55e');
-  } else {
-    if(d.from==='veiculo'){ pneu.cavalo=null; pneu.carreta=null; pneu.posicao=null; }
-    pneu.status=d.zone;
-    addM(d.fogo, d.acao, '', '', '', pneu.sulcoMenor, km);
-    toSync.push(pneu);
-    toast(d.fogo+' → '+(d.zone==='almox'?'Almox.':'Reforma')+' (hodômetro '+fkm(km)+')', '#38bdf8');
-  }
+  CFG.hodos[PEND_CAV]=km;
+  PEND_LOG.forEach(m=>addM(m.fogo, m.tipo, m.cavalo, m.carreta, m.posicao, m.sulco, km));
 
-  const idxVolta = d.idxAtual;
-  document.getElementById('mov-modal').classList.remove('open');
-  PEND_MOV = null;
-  renderSidebar(); nav('frota-map',{idx:idxVolta});
-  await syncHodometro(d.cav, km);
-  for(const p of toSync){ await syncPneu(p); }
+  const fogos=[...PEND_FOGOS];
+  const cavSalvo=PEND_CAV, idxAtual=MAP_IDX;
+  document.getElementById('salvar-mov-modal').classList.remove('open');
+  PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_CAV=null;
+  toast('Salvando '+fogos.length+' pneu(s) e hodômetro '+fkm(km)+'...', '#38bdf8');
+  renderSidebar(); nav('frota-map',{idx:idxAtual});
+
+  await syncHodometro(cavSalvo, km);
+  for(const f of fogos){ const p=getPneu(f); if(p) await syncPneu(p); }
+  toast('✓ Movimentações salvas com sucesso','#22c55e');
+}
+function descartarMovimentacoes(silencioso){
+  PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_CAV=null;
+  if(!silencioso){ toast('Alterações descartadas','#eab308'); }
+  load().then(()=>{ renderSidebar(); renderMain(); });
 }
 
 // ── Motivo do Sucateamento ──
@@ -1263,15 +1283,12 @@ const MOTIVOS_SUCATA = [
 let SUCATA_FOGO=null, SUCATA_FROM=null, SUCATA_MAP_IDX=null;
 let SUCATA_CAV=null;
 function abrirMotivoSucata(fogo, from, cav){
-  SUCATA_FOGO=fogo; SUCATA_FROM=from; SUCATA_MAP_IDX=MAP_IDX; SUCATA_CAV=cav||MAP_IDX!=null&&PARES_DEFAULT[MAP_IDX]?PARES_DEFAULT[MAP_IDX][0]:null;
+  SUCATA_FOGO=fogo; SUCATA_FROM=from; SUCATA_MAP_IDX=MAP_IDX; SUCATA_CAV=cav||(MAP_IDX!=null&&PARES_DEFAULT[MAP_IDX]?PARES_DEFAULT[MAP_IDX][0]:null);
   const sel=document.getElementById('sucata-motivo-select');
   sel.innerHTML='<option value="">Selecione o motivo...</option>'+MOTIVOS_SUCATA.map(m=>`<option value="${m}">${m}</option>`).join('');
   document.getElementById('sucata-motivo-outro').style.display='none';
   document.getElementById('sucata-motivo-outro').value='';
   document.getElementById('sucata-info').textContent='Pneu '+fogo;
-  const hodoAtual=CFG.hodos[SUCATA_CAV]||0;
-  document.getElementById('sucata-km-input').value=hodoAtual||'';
-  document.getElementById('sucata-km-hint').textContent=hodoAtual?'Hodômetro atual registrado: '+fkm(hodoAtual):'Sem hodômetro registrado ainda para '+SUCATA_CAV;
   document.getElementById('sucata-modal').classList.add('open');
 }
 function sucataMotivoMudou(v){
@@ -1280,34 +1297,25 @@ function sucataMotivoMudou(v){
 function fecharMotivoSucata(){
   document.getElementById('sucata-modal').classList.remove('open');
   mDrag=null; SUCATA_FOGO=null;
-  if(SUCATA_MAP_IDX!=null) nav('frota-map',{idx:SUCATA_MAP_IDX});
 }
-async function confirmarMotivoSucata(){
+function confirmarMotivoSucata(){
   const sel=document.getElementById('sucata-motivo-select').value;
   const outro=document.getElementById('sucata-motivo-outro').value.trim();
   if(!sel){ toast('Selecione o motivo do sucateamento', '#eab308'); return; }
   const motivo = sel==='Outro' ? (outro||'Outro (não especificado)') : sel;
 
-  const km=parseInt(document.getElementById('sucata-km-input').value)||0;
-  const atual=CFG.hodos[SUCATA_CAV]||0;
-  if(km<=0){ toast('Informe o hodômetro atual do veículo', '#eab308'); return; }
-  if(km<atual){ toast('KM não pode ser menor que o hodômetro atual ('+fkm(atual)+')', '#ef4444'); return; }
-
   const pneu=getPneu(SUCATA_FOGO);
-  const idxVolta=SUCATA_MAP_IDX;
   if(!pneu){ fecharMotivoSucata(); return; }
   if(SUCATA_FROM==='veiculo'){ pneu.cavalo=null; pneu.carreta=null; pneu.posicao=null; }
   pneu.status='sucata';
   pneu.motivoSucata=motivo;
-  if(SUCATA_CAV) CFG.hodos[SUCATA_CAV]=km;
-  addM(pneu.fogo,'Sucata','','','',pneu.sulcoMenor,km);
-  toast(pneu.fogo+' → Sucata ('+motivo+') · hodômetro '+fkm(km),'#ef4444');
+  PEND_LOG.push({fogo:pneu.fogo,tipo:'Sucata',cavalo:'',carreta:'',posicao:'',sulco:pneu.sulcoMenor});
+  if(SUCATA_CAV) marcarPendente(SUCATA_CAV, [pneu.fogo]);
+  toast(pneu.fogo+' → Sucata ('+motivo+') — pendente, clique em Salvar quando terminar','#ef4444');
 
   document.getElementById('sucata-modal').classList.remove('open');
   mDrag=null; SUCATA_FOGO=null;
-  if(idxVolta!=null){ renderSidebar(); nav('frota-map',{idx:idxVolta}); }
-  if(SUCATA_CAV) await syncHodometro(SUCATA_CAV, km);
-  await syncPneu(pneu);
+  renderMain();
 }
 
 // ============================
@@ -1370,7 +1378,7 @@ async function saveKm(){
 }
 document.getElementById('km-modal').onclick=e=>{if(e.target===document.getElementById('km-modal'))closeKm();};
 document.getElementById('sucata-modal').onclick=e=>{if(e.target===document.getElementById('sucata-modal'))fecharMotivoSucata();};
-document.getElementById('mov-modal').onclick=e=>{if(e.target===document.getElementById('mov-modal'))fecharConfirmarMovimentacao();};
+document.getElementById('salvar-mov-modal').onclick=e=>{if(e.target===document.getElementById('salvar-mov-modal'))fecharSalvarMovimentacoes();};
 
 // ============================
 //  ESTOQUE + REFORMADORA
