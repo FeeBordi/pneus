@@ -514,21 +514,6 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
   </div>
 </div>
 
-<div class="km-modal" id="salvar-mov-modal">
-  <div class="km-box">
-    <h3>💾 Salvar Movimentações</h3>
-    <div class="hint" id="salvar-mov-info" style="margin-bottom:14px;line-height:1.6"></div>
-    <div class="fg2"><label>Hodômetro atual do veículo (km)</label>
-      <input type="number" id="salvar-mov-km-input" min="0" placeholder="ex: 531153" style="width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--txt);font-size:14px">
-      <div class="hint" id="salvar-mov-km-hint" style="font-size:11px;margin-top:3px"></div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button class="btn primary" id="salvar-mov-btn" style="flex:1;justify-content:center;background:var(--green);color:#fff" onclick="confirmarSalvarMovimentacoes()">Salvar Tudo</button>
-      <button class="btn" onclick="fecharSalvarMovimentacoes()">Voltar</button>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toast"><span class="tic" id="tic"></span><span id="tmsg"></span></div>
 
 <script>
@@ -803,7 +788,7 @@ function addM(fogo,tipo,cav,carr,pos,sulco,km){MV.push({id:uid(),data:td(),fogo,
 let ALOCQ="",ALOC_FOGO=null;
 let KMQ="";
 let VIEW='home', VP={}, KM_CAV=null;
-let mDrag=null, sTab='almox', MAP_IDX=null, KM_ORIGEM='frota-map';
+let mDrag=null, sTab='almox', MAP_IDX=null, KM_ORIGEM='frota-map', STK_Q='';
 // Movimentações pendentes — acumuladas localmente enquanto o usuário mexe no veículo,
 // só vão pro servidor quando ele aperta "Salvar Movimentações" (junto com o hodômetro)
 let PEND_LOG=[], PEND_FOGOS=new Set(), PEND_CAV=null, SALVAR_MOV_CAV=null;
@@ -961,12 +946,20 @@ function renderFrotaMap(mc,idx){
   const na=vp.filter(p=>p.sulcoMenor>=3&&p.sulcoMenor<6).length;
   const cpkMed=vp.filter(p=>cpk(p)>0).reduce((s,p,_,a)=>s+cpk(p)/a.length,0);
   const temPendente = PEND_CAV===cav && PEND_FOGOS.size>0;
-  mc.innerHTML=`<div class="vh" style="flex-wrap:wrap;gap:8px">
+  mc.innerHTML=`<div class="vh" style="flex-wrap:wrap;gap:10px;align-items:flex-end">
     <div><div class="back" onclick="nav('frota')">← Frota</div>
     <h1><span class="plate">${cav}</span> + <span class="plate">${carr}</span></h1>
     <div class="sub">Conjunto ${idx+1}/${PARES_DEFAULT.length}${temPendente?` · <span style="color:var(--accent);font-weight:700">${PEND_FOGOS.size} pendente(s)</span>`:''}</div></div>
+    <div style="display:flex;flex-direction:column;gap:3px">
+      <label style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em">Hodômetro</label>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input type="number" id="mapa-hodo-input" value="${hodo||''}" min="0" oninput="validarHodoInline('${cav}',${hodo})"
+          style="width:130px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--txt);font-size:14px;font-family:monospace">
+        <span id="mapa-hodo-check" style="font-size:16px"></span>
+      </div>
+    </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn sm" style="background:var(--green);color:#fff;font-weight:700;${temPendente?'animation:pulseSave 1.6s ease-in-out infinite':''}" onclick="abrirSalvarMovimentacoes('${cav}')">💾 Salvar${temPendente?' ('+PEND_FOGOS.size+')':''} · KM: ${hodo?fkm(hodo):'—'}</button>
+      <button class="btn sm" id="mapa-salvar-btn" style="background:var(--green);color:#fff;font-weight:700;${temPendente?'animation:pulseSave 1.6s ease-in-out infinite':''}" onclick="salvarMovimentacoesDireto('${cav}')">💾 Salvar Movimentações${temPendente?' ('+PEND_FOGOS.size+')':''}</button>
       ${temPendente?`<button class="btn sm" onclick="descartarMovimentacoes()">✕ Descartar</button>`:''}
       <button class="btn sm" onclick="nav('frota-map',{idx:${Math.max(0,idx-1)}})">←</button>
       <button class="btn sm" onclick="nav('frota-map',{idx:${Math.min(PARES_DEFAULT.length-1,idx+1)}})">→</button>
@@ -990,6 +983,10 @@ function renderFrotaMap(mc,idx){
       <button class="btn sm ${sTab==='almox'?'primary':''}" onclick="setSTab('almox')">Almox.(${P.filter(p=>p.status==='almox').length})</button>
       <button class="btn sm ${sTab==='reforma'?'primary':''}" onclick="setSTab('reforma')">Reforma(${P.filter(p=>p.status==='reforma').length})</button>
     </div></div>
+    <div style="padding:10px 14px 0">
+      <input id="stk-search" placeholder="🔍 Pesquisar por Número de Fogo..." value="${STK_Q||''}" oninput="filtStk(this.value)"
+        style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--txt);font-size:13px">
+    </div>
     <div class="stk-panel" id="stk"></div>
     <div class="dz-row">
       <div class="dz" id="dz-almox" data-dz="almox">↩ Almox</div>
@@ -1147,7 +1144,8 @@ function buildSlot(placa,pos,isCarr){
 
 function buildStk(){
   const g=document.getElementById('stk'); if(!g) return;
-  const list=P.filter(p=>p.status===sTab).sort((a,b)=>b.sulcoMenor-a.sulcoMenor);
+  const q=(STK_Q||'').trim().toLowerCase();
+  const list=P.filter(p=>p.status===sTab && (!q||p.fogo.toLowerCase().includes(q))).sort((a,b)=>b.sulcoMenor-a.sulcoMenor);
   g.innerHTML=list.map(p=>{
     const sc=sst(p.sulcoMenor);
     return `<div class="st" draggable="true" title="${p.fogo} · ${p.sulcoMenor}mm · ${p.fabricante} ${p.modelo}"
@@ -1155,8 +1153,9 @@ function buildStk(){
       ondragstart="mDrag={fogo:'${p.fogo}',from:'${sTab}',pos:null}"
       ondragend="clrOver()">
       <div class="mini2">${wheelSVG(sc,p.fogo)}</div><div class="slb">${p.fogo}</div></div>`;
-  }).join('')||`<div style="grid-column:1/-1;padding:28px;text-align:center;color:rgba(34,211,238,.3);font-size:12px">Vazio</div>`;
+  }).join('')||`<div style="grid-column:1/-1;padding:28px;text-align:center;color:rgba(34,211,238,.3);font-size:12px">${q?'Nenhum pneu com esse fogo':'Vazio'}</div>`;
 }
+function filtStk(q){ STK_Q=q; buildStk(); }
 function setupDZ(cav,carr){
   ['dz-almox','dz-reforma','dz-sucata'].forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
@@ -1166,7 +1165,7 @@ function setupDZ(cav,carr){
   });
 }
 function clrOver(){document.querySelectorAll('.over').forEach(e=>e.classList.remove('over'));}
-function setSTab(t){sTab=t;nav('frota-map',{idx:MAP_IDX});}
+function setSTab(t){sTab=t;STK_Q='';nav('frota-map',{idx:MAP_IDX});}
 
 // Marca que existe alteração pendente nesse veículo (a tela vai mostrar o botão Salvar)
 function marcarPendente(cav, fogos){
@@ -1231,32 +1230,26 @@ function dropZone(zone,cav,carr){
 }
 
 // ── Salvar Movimentações em lote (pede o KM do hodômetro UMA vez só, no final) ──
-function abrirSalvarMovimentacoes(cavAtual){
-  // Sempre abre — mesmo sem nenhuma movimentação pendente (nesse caso, só atualiza o hodômetro)
-  const cav = PEND_CAV || cavAtual;
-  const hodoAtual = CFG.hodos[cav]||0;
-  const temPendente = PEND_CAV===cav && PEND_FOGOS.size>0;
-  const resumo = temPendente
-    ? `<b>${PEND_FOGOS.size} pneu(s) alterado(s) em ${cav}:</b><br>` + PEND_LOG.map(m=>`${m.fogo} — ${m.tipo}${m.posicao?' ('+m.posicao+')':''}`).join('<br>')
-    : `Nenhuma movimentação de pneu pendente em ${cav}. Você pode apenas atualizar o hodômetro.`;
-  SALVAR_MOV_CAV = cav;
-  document.getElementById('salvar-mov-info').innerHTML = resumo;
-  document.getElementById('salvar-mov-km-input').value = hodoAtual||'';
-  document.getElementById('salvar-mov-km-hint').textContent = hodoAtual ? 'Hodômetro atual registrado: '+fkm(hodoAtual) : 'Sem hodômetro registrado ainda para '+cav;
-  document.getElementById('salvar-mov-modal').classList.add('open');
-  setTimeout(()=>document.getElementById('salvar-mov-km-input').focus(),50);
+// Valida o campo de hodômetro na hora, mostrando ✓ verde ou ✗ vermelho (igual ao Gestran)
+function validarHodoInline(cav, hodoAtual){
+  const el=document.getElementById('mapa-hodo-input'); if(!el) return;
+  const check=document.getElementById('mapa-hodo-check'); if(!check) return;
+  const v=parseInt(el.value)||0;
+  if(v<=0){ check.textContent=''; return; }
+  if(v<(hodoAtual||0)){ check.textContent='✗'; check.style.color='var(--red)'; }
+  else { check.textContent='✓'; check.style.color='var(--green)'; }
 }
-function fecharSalvarMovimentacoes(){
-  document.getElementById('salvar-mov-modal').classList.remove('open');
-}
-async function confirmarSalvarMovimentacoes(){
-  const cav = SALVAR_MOV_CAV;
-  const km = parseInt(document.getElementById('salvar-mov-km-input').value)||0;
-  if(km<=0){ toast('Informe o hodômetro atual do veículo', '#eab308'); return; }
-  const atual = CFG.hodos[cav]||0;
-  if(km<atual){ toast('KM não pode ser menor que o hodômetro atual ('+fkm(atual)+')', '#ef4444'); return; }
 
-  const btn=document.getElementById('salvar-mov-btn');
+// Salva direto — sem popup, igual ao Gestran: lê o hodômetro que já está no campo do
+// cabeçalho e grava tudo (hodômetro + qualquer movimentação pendente) num só clique.
+async function salvarMovimentacoesDireto(cav){
+  const el=document.getElementById('mapa-hodo-input');
+  const km=parseInt(el.value)||0;
+  const atual=CFG.hodos[cav]||0;
+  if(km<=0){ toast('Informe o hodômetro atual do veículo', '#eab308'); return; }
+  if(km<atual){ toast('Hodômetro não pode ser menor que o atual ('+fkm(atual)+')', '#ef4444'); return; }
+
+  const btn=document.getElementById('mapa-salvar-btn');
   if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
 
   CFG.hodos[cav]=km;
@@ -1265,9 +1258,7 @@ async function confirmarSalvarMovimentacoes(){
 
   const fogos = temPendente ? [...PEND_FOGOS] : [];
   const idxAtual=MAP_IDX;
-  document.getElementById('salvar-mov-modal').classList.remove('open');
   if(temPendente){ PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_CAV=null; }
-  SALVAR_MOV_CAV=null;
   toast('Salvando'+(fogos.length?' '+fogos.length+' pneu(s) e':'')+' hodômetro '+fkm(km)+'...', '#38bdf8');
   renderSidebar(); nav('frota-map',{idx:idxAtual});
 
@@ -1384,11 +1375,28 @@ async function saveKm(){
 }
 document.getElementById('km-modal').onclick=e=>{if(e.target===document.getElementById('km-modal'))closeKm();};
 document.getElementById('sucata-modal').onclick=e=>{if(e.target===document.getElementById('sucata-modal'))fecharMotivoSucata();};
-document.getElementById('salvar-mov-modal').onclick=e=>{if(e.target===document.getElementById('salvar-mov-modal'))fecharSalvarMovimentacoes();};
 
 // ============================
 //  ESTOQUE + REFORMADORA
 // ============================
+function estoqueAlmoxRows(list){
+  return list.length?list.map(p=>`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td><td>${p.fabricante}</td><td>${p.modelo}</td><td style="font-size:11px">${p.vida}</td><td class="r">${sbadge(p.sulcoMenor)}</td><td class="r">${fkm(p.kmTotal||p.kmVida)}</td><td class="r">${fr(p.valorU)}</td><td style="font-size:11px">${p.almoxarifado||'—'}</td></tr>`).join(''):'<tr><td colspan="8"><div class="empty"><div class="eic">📦</div><div class="etxt">Nenhum pneu encontrado</div></div></td></tr>';
+}
+function estoqueReformaRows(list){
+  return list.length?list.map(p=>`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td><td>${p.fabricante}</td><td>${p.modelo}</td><td style="font-size:11px">${p.vida}</td><td class="r">${sbadge(p.sulcoMenor)}</td><td class="r">${fkm(p.kmVida)}</td><td class="r">${fr(p.valorU)}</td></tr>`).join(''):'<tr><td colspan="7"><div class="empty"><div class="eic">🔧</div><div class="etxt">Nenhum pneu encontrado</div></div></td></tr>';
+}
+function filtEstoqueAlmox(q){
+  const tb=document.getElementById('estoque-almox-body'); if(!tb) return;
+  const qq=q.toLowerCase();
+  const list=P.filter(p=>p.status==='almox'&&(!qq||p.fogo.toLowerCase().includes(qq)||p.fabricante.toLowerCase().includes(qq)||p.modelo.toLowerCase().includes(qq)));
+  tb.innerHTML=estoqueAlmoxRows(list);
+}
+function filtEstoqueReforma(q){
+  const tb=document.getElementById('estoque-reforma-body'); if(!tb) return;
+  const qq=q.toLowerCase();
+  const list=P.filter(p=>p.status==='reforma'&&(!qq||p.fogo.toLowerCase().includes(qq)||p.fabricante.toLowerCase().includes(qq)||p.modelo.toLowerCase().includes(qq)));
+  tb.innerHTML=estoqueReformaRows(list);
+}
 function renderEstoque(mc){
   const almx=P.filter(p=>p.status==='almox');
   const ref=P.filter(p=>p.status==='reforma');
@@ -1403,14 +1411,20 @@ function renderEstoque(mc){
     <div class="kpi o"><div class="lbl">Total em Estoque</div><div class="val">${almx.length+ref.length}</div><div class="meta">${fr(tvA+tvR)}</div></div>
   </div>
   <div class="card">
-  <div class="ch"><h2>📦 Almoxarifado (${almx.length})</h2></div>
+  <div class="ch" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <h2>📦 Almoxarifado (${almx.length})</h2>
+    <input placeholder="🔍 Buscar fogo / fabricante / modelo..." oninput="filtEstoqueAlmox(this.value)" style="width:260px;padding:8px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--txt);font-size:13px">
+  </div>
   <div class="tbl"><table><thead><tr><th>Fogo</th><th>Fabricante</th><th>Modelo</th><th>Vida</th><th class="r">Sulco</th><th class="r">KM Total</th><th class="r">Valor</th><th>Almox.</th></tr></thead>
-  <tbody>${almx.length?almx.map(p=>`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td><td>${p.fabricante}</td><td>${p.modelo}</td><td style="font-size:11px">${p.vida}</td><td class="r">${sbadge(p.sulcoMenor)}</td><td class="r">${fkm(p.kmTotal||p.kmVida)}</td><td class="r">${fr(p.valorU)}</td><td style="font-size:11px">${p.almoxarifado||'—'}</td></tr>`).join(''):'<tr><td colspan="8"><div class="empty"><div class="eic">📦</div><div class="etxt">Vazio</div></div></td></tr>'}</tbody>
+  <tbody id="estoque-almox-body">${estoqueAlmoxRows(almx)}</tbody>
   </table></div></div>
   <div class="card" style="margin-top:14px">
-  <div class="ch"><h2>🔧 Reformadora (${ref.length})</h2></div>
+  <div class="ch" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <h2>🔧 Reformadora (${ref.length})</h2>
+    <input placeholder="🔍 Buscar fogo / fabricante / modelo..." oninput="filtEstoqueReforma(this.value)" style="width:260px;padding:8px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--txt);font-size:13px">
+  </div>
   <div class="tbl"><table><thead><tr><th>Fogo</th><th>Fabricante</th><th>Modelo</th><th>Vida</th><th class="r">Sulco Entrada</th><th class="r">KM Rodado</th><th class="r">Valor</th></tr></thead>
-  <tbody>${ref.length?ref.map(p=>`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td><td>${p.fabricante}</td><td>${p.modelo}</td><td style="font-size:11px">${p.vida}</td><td class="r">${sbadge(p.sulcoMenor)}</td><td class="r">${fkm(p.kmVida)}</td><td class="r">${fr(p.valorU)}</td></tr>`).join(''):'<tr><td colspan="7"><div class="empty"><div class="eic">🔧</div><div class="etxt">Nenhum pneu em reforma</div></div></td></tr>'}</tbody>
+  <tbody id="estoque-reforma-body">${estoqueReformaRows(ref)}</tbody>
   </table></div></div>
   </div>`;
 }
