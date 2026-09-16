@@ -1181,17 +1181,27 @@ function dropPos(targetPos,targetPlaca,isCarr){
   const pneu=getPneu(fogo); if(!pneu) return;
   const cav=PARES_DEFAULT[idxAtual][0];
   const carr=CFG.pairs[cav]||PARES_DEFAULT[idxAtual][1];
+
+  // Guarda a origem ANTES de alterar o pneu. Isso é essencial em rodízios entre
+  // cavalo e carreta: o pneu que estava no destino precisa voltar para a origem
+  // completa (posição + placa correta), não apenas trocar o código da posição.
+  const origem={cavalo:pneu.cavalo||null,carreta:pneu.carreta||null,posicao:pneu.posicao||srcPos||null};
   const occ=P.find(p=>p.status==='veiculo'&&(isCarr?p.carreta===targetPlaca:p.cavalo===targetPlaca)&&p.posicao===targetPos);
 
-  if(from==='veiculo'&&srcPos===targetPos) return; // soltou no mesmo lugar
+  const mesmaUnidade = isCarr ? (origem.carreta===targetPlaca) : (origem.cavalo===targetPlaca);
+  if(from==='veiculo' && mesmaUnidade && srcPos===targetPos) return;
 
   const tocados=[fogo];
   if(from==='veiculo'){
     if(occ&&occ.fogo!==fogo){
-      occ.posicao=srcPos;
-      PEND_LOG.push({fogo:occ.fogo,tipo:'Rodízio',cavalo:occ.cavalo,carreta:occ.carreta,posicao:srcPos,sulco:occ.sulcoMenor});
+      occ.status='veiculo';
+      occ.posicao=origem.posicao;
+      occ.cavalo=origem.cavalo;
+      occ.carreta=origem.carreta;
+      PEND_LOG.push({fogo:occ.fogo,tipo:'Rodízio',cavalo:occ.cavalo,carreta:occ.carreta,posicao:occ.posicao,sulco:occ.sulcoMenor});
       tocados.push(occ.fogo);
     }
+    pneu.status='veiculo';
     pneu.posicao=targetPos;
     if(isCarr){pneu.carreta=targetPlaca;pneu.cavalo=null;}else{pneu.cavalo=targetPlaca;pneu.carreta=null;}
     PEND_LOG.push({fogo,tipo:'Rodízio',cavalo:pneu.cavalo,carreta:pneu.carreta,posicao:targetPos,sulco:pneu.sulcoMenor});
@@ -1214,7 +1224,6 @@ function dropZone(zone,cav,carr){
   if(!mDrag) return;
   const {fogo,from}=mDrag;
   if(zone==='sucata'){
-    // Sucatear sempre pede o motivo na hora (mas só entra na fila — não salva ainda)
     abrirMotivoSucata(fogo, from, cav);
     return;
   }
@@ -1229,6 +1238,33 @@ function dropZone(zone,cav,carr){
   renderMain();
 }
 
+// Estado mínimo que precisa realmente persistir na planilha após uma movimentação.
+function estadoMovPneu(p){
+  return {
+    fogo:String(p.fogo), status:p.status||'almox',
+    cavalo:p.status==='veiculo'?(p.cavalo||''):'',
+    carreta:p.status==='veiculo'?(p.carreta||''):'',
+    posicao:p.status==='veiculo'?(p.posicao||''):'',
+    motivoSucata:p.status==='sucata'?(p.motivoSucata||''):''
+  };
+}
+function estadoMovIgual(a,b){
+  return !!a && String(a.fogo)===String(b.fogo) &&
+    String(a.status||'almox')===String(b.status||'almox') &&
+    String(a.cavalo||'')===String(b.cavalo||'') &&
+    String(a.carreta||'')===String(b.carreta||'') &&
+    String(a.posicao||'')===String(b.posicao||'') &&
+    String(a.motivoSucata||'')===String(b.motivoSucata||'');
+}
+async function verificarMovimentacoesSalvas(esperados){
+  try{
+    const data=await apiGet('data');
+    if(!data||!data.ok) return {ok:false,erro:'Não foi possível conferir a planilha'};
+    const mapa=new Map((data.pneus||[]).map(x=>[String(x.fogo),estadoMovPneu(x)]));
+    const divergentes=esperados.filter(e=>!estadoMovIgual(mapa.get(String(e.fogo)),e));
+    return {ok:divergentes.length===0,divergentes,data};
+  }catch(e){ return {ok:false,erro:e.message||'Falha na conferência'}; }
+}
 // ── Salvar Movimentações em lote (pede o KM do hodômetro UMA vez só, no final) ──
 // Valida o campo de hodômetro na hora, mostrando ✓ verde ou ✗ vermelho (igual ao Gestran)
 function validarHodoInline(cav, hodoAtual){
@@ -1244,54 +1280,80 @@ function validarHodoInline(cav, hodoAtual){
 // cabeçalho e grava tudo (hodômetro + qualquer movimentação pendente) num só clique.
 async function salvarMovimentacoesDireto(cav){
   const el=document.getElementById('mapa-hodo-input');
-  const km=parseInt(el.value)||0;
+  const digitado=el ? parseInt(el.value) : 0;
   const atual=CFG.hodos[cav]||0;
-  if(km<=0){ toast('Informe o hodômetro atual do veículo', '#eab308'); return; }
-  if(km<atual){ toast('Hodômetro não pode ser menor que o atual ('+fkm(atual)+')', '#ef4444'); return; }
-
-  const btn=document.getElementById('mapa-salvar-btn');
-  if(btn){ btn.disabled=true; btn.textContent='Salvando... NÃO SAIA DA TELA'; }
-
   const temPendente = PEND_CAV===cav && PEND_FOGOS.size>0;
   const fogos = temPendente ? [...PEND_FOGOS] : [];
+
+  // O hodômetro não pode bloquear a gravação dos pneus. Se não foi alterado,
+  // usamos o valor atual. Se houver valor digitado, apenas validamos regressão.
+  const km = digitado>0 ? digitado : atual;
+  if(digitado>0 && digitado<atual){ toast('Hodômetro não pode ser menor que o atual ('+fkm(atual)+')', '#ef4444'); return; }
+  if(!temPendente && km<=0){ toast('Não há movimentações pendentes e nenhum hodômetro informado', '#eab308'); return; }
+
+  const btn=document.getElementById('mapa-salvar-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Salvando e conferindo...'; }
   const idxAtual=MAP_IDX;
 
-  // IMPORTANTE: só limpa a fila pendente e re-renderiza DEPOIS que tudo
-  // realmente terminou de gravar no servidor — senão, se a pessoa sair da
-  // tela no meio do processo, o navegador pode cortar as gravações que
-  // ainda estavam a caminho, e a mudança nunca chega a ser salva de verdade.
-
-  const rHodo = await syncHodometro(cav, km);
-  if(!rHodo || !rHodo.ok){
-    if(btn){ btn.disabled=false; btn.textContent='💾 Salvar Movimentações'+(temPendente?' ('+fogos.length+')':''); }
-    toast('⚠️ Falha ao salvar o hodômetro — nada foi perdido, tente de novo', '#ef4444');
-    return;
-  }
-  CFG.hodos[cav]=km;
-
-  for(let i=0;i<fogos.length;i++){
-    const f=fogos[i];
+  // Congela exatamente o estado que o usuário está vendo. Mesmo que a tela seja
+  // re-renderizada, cada requisição usará este snapshot e não um objeto mutável.
+  const snapshots=fogos.map(f=>{
     const p=getPneu(f);
-    if(!p) continue;
-    const r = await syncPneu(p);
-    if(!r || !r.ok){
-      // A falha aqui já dispara uma atualização com os dados reais do servidor por baixo dos
-      // panos, então qualquer pneu desta leva que ainda não foi salvo pode ter sido resetado
-      // junto. Mais seguro parar aqui, avisar claramente, e limpar a fila em vez de tentar
-      // "continuar" com um estado local que não é mais confiável.
-      PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_CAV=null;
-        const restantes = fogos.length - i;
-      toast('⚠️ Falha ao salvar '+f+'. '+(restantes>1?'Os outros '+(restantes-1)+' pneu(s) desta leva podem ter sido desfeitos — confira o mapa e refaça se precisar.':''), '#ef4444');
-      renderSidebar(); nav('frota-map',{idx:idxAtual});
+    return p ? JSON.parse(JSON.stringify(p)) : null;
+  }).filter(Boolean);
+  const esperados=snapshots.map(estadoMovPneu);
+
+  // Salva hodômetro somente quando existe valor válido e ele mudou.
+  if(km>0 && km!==atual){
+    const rHodo=await syncHodometro(cav,km);
+    if(!rHodo||!rHodo.ok){
+      if(btn){btn.disabled=false;btn.textContent='💾 Salvar Movimentações ('+fogos.length+')';}
+      toast('⚠️ Falha ao salvar hodômetro. Os pneus ainda não foram confirmados.', '#ef4444');
+      return;
+    }
+    CFG.hodos[cav]=km;
+  }
+
+  // Primeira tentativa: grava sequencialmente para não sobrecarregar o Apps Script.
+  for(const snap of snapshots){
+    const r=await syncPneu(snap);
+    if(!r||!r.ok){
+      if(btn){btn.disabled=false;btn.textContent='💾 Salvar Movimentações ('+fogos.length+')';}
+      toast('⚠️ O servidor não confirmou o pneu '+snap.fogo+'. As alterações continuam pendentes.', '#ef4444');
       return;
     }
   }
 
-  // Só chega aqui se TUDO foi confirmado salvo no servidor
-  if(temPendente) PEND_LOG.forEach(m=>addM(m.fogo, m.tipo, m.cavalo, m.carreta, m.posicao, m.sulco, km));
+  // Confirma na fonte de verdade (planilha). Se algum pneu não persistiu, tenta
+  // novamente apenas os divergentes e confere uma segunda vez.
+  if(esperados.length){
+    await new Promise(r=>setTimeout(r,350));
+    let check=await verificarMovimentacoesSalvas(esperados);
+    if(!check.ok && check.divergentes && check.divergentes.length){
+      for(const e of check.divergentes){
+        const snap=snapshots.find(x=>String(x.fogo)===String(e.fogo));
+        if(snap) await syncPneu(snap);
+      }
+      await new Promise(r=>setTimeout(r,450));
+      check=await verificarMovimentacoesSalvas(esperados);
+    }
+    if(!check.ok){
+      if(btn){btn.disabled=false;btn.textContent='💾 Salvar Movimentações ('+fogos.length+')';}
+      const nomes=(check.divergentes||esperados).map(x=>x.fogo).join(', ');
+      toast('⚠️ A planilha não confirmou: '+nomes+'. As mudanças ficaram pendentes para tentar novamente.', '#ef4444');
+      return;
+    }
+  }
+
+  // Só limpa as pendências DEPOIS da leitura de conferência confirmar todos os pneus.
+  if(temPendente) PEND_LOG.forEach(m=>addM(m.fogo,m.tipo,m.cavalo,m.carreta,m.posicao,m.sulco,km));
   PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_CAV=null;
-  toast('✓ Salvo com sucesso'+(fogos.length?' — '+fogos.length+' pneu(s) e hodômetro '+fkm(km):''),'#22c55e');
-  renderSidebar(); nav('frota-map',{idx:idxAtual});
+
+  // Recarrega da planilha para a tela refletir exatamente o que ficou persistido.
+  await load();
+  toast('✓ Movimentações salvas e conferidas'+(fogos.length?' — '+fogos.length+' pneu(s)':''),'#22c55e');
+  renderSidebar();
+  VIEW='frota-map'; VP={idx:idxAtual}; renderMain();
 }
 window.addEventListener('beforeunload', function(e){
   // PENDING_WRITES cobre QUALQUER gravação em andamento no app inteiro — cadastro, exclusão,
