@@ -623,7 +623,7 @@ async function showApp(){
 // ============================
 // Mude esse número toda vez que publicar uma versão nova — é o que aparece na tela de
 // login e no rodapé do menu, pra dar pra conferir se todo mundo está no mesmo arquivo.
-const APP_VERSION = '2026.09.16.1';
+const APP_VERSION = '2026.09.17.1';
 const API_URL = 'https://script.google.com/macros/s/AKfycbyxNjCT1UmURFcqaEl29rpRBkmrEIdAqh_E5zs-VOYXcpKwAP0BUMspE-I4FkmPduM0/exec';
 let SYNCING = false;
 let PENDING_WRITES = 0; // conta gravações em andamento — o polling espera zerar antes de atualizar a tela
@@ -1363,9 +1363,14 @@ async function salvarMovimentacoesDireto(cav){
   VIEW='frota-map'; VP={idx:idxAtual}; renderMain();
 }
 window.addEventListener('beforeunload', function(e){
-  // PENDING_WRITES cobre QUALQUER gravação em andamento no app inteiro — cadastro, exclusão,
-  // alocação, engate, hodômetro, etc. — não só o botão de Salvar Movimentações do mapa.
-  if(typeof PENDING_WRITES!=='undefined' && PENDING_WRITES>0){ e.preventDefault(); e.returnValue=''; return ''; }
+  // Cobre dois casos: (1) uma gravação já em andamento (PENDING_WRITES), e
+  // (2) uma movimentação feita no mapa que ainda nem começou a salvar —
+  // por exemplo, arrastou um pneu pra reforma mas ainda não clicou em
+  // "Salvar Movimentações". Sem isso, fechar a aba nesse meio-tempo perde
+  // a mudança sem nenhum aviso, porque nenhuma gravação chegou a começar.
+  const temGravacaoEmAndamento = typeof PENDING_WRITES!=='undefined' && PENDING_WRITES>0;
+  const temPendenteNaoSalvo = typeof PEND_FOGOS!=='undefined' && PEND_FOGOS.size>0;
+  if(temGravacaoEmAndamento || temPendenteNaoSalvo){ e.preventDefault(); e.returnValue=''; return ''; }
 });
 function descartarMovimentacoes(silencioso){
   PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_CAV=null;
