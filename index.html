@@ -392,6 +392,7 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
     <div class="login-mark">🚛</div>
     <div class="login-title">Transccema</div>
     <div class="login-sub">Gestão de Pneus — faça login</div>
+    <div id="app-version-login" style="text-align:center;font-size:10px;color:var(--txt3);margin-top:-16px;margin-bottom:20px;font-family:monospace"></div>
     <div class="login-users" id="login-users"></div>
     <form id="login-form" onsubmit="return doLogin(event)">
       <div class="login-fg">
@@ -447,6 +448,7 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
     <div class="nm" id="sb-user-nm">—</div>
     <div class="lo" onclick="doLogout()">Sair</div>
   </div>
+  <div id="app-version-sidebar" style="text-align:center;font-size:10px;color:var(--txt3);padding:6px 0 10px;font-family:monospace"></div>
 </nav>
 
 <div class="main" id="main"></div>
@@ -619,6 +621,9 @@ async function showApp(){
 // ============================
 //  BACKEND (Google Apps Script)
 // ============================
+// Mude esse número toda vez que publicar uma versão nova — é o que aparece na tela de
+// login e no rodapé do menu, pra dar pra conferir se todo mundo está no mesmo arquivo.
+const APP_VERSION = '2026.09.16.1';
 const API_URL = 'https://script.google.com/macros/s/AKfycbyxNjCT1UmURFcqaEl29rpRBkmrEIdAqh_E5zs-VOYXcpKwAP0BUMspE-I4FkmPduM0/exec';
 let SYNCING = false;
 let PENDING_WRITES = 0; // conta gravações em andamento — o polling espera zerar antes de atualizar a tela
@@ -791,7 +796,7 @@ let VIEW='home', VP={}, KM_CAV=null;
 let mDrag=null, sTab='almox', MAP_IDX=null, KM_ORIGEM='frota-map', STK_Q='';
 // Movimentações pendentes — acumuladas localmente enquanto o usuário mexe no veículo,
 // só vão pro servidor quando ele aperta "Salvar Movimentações" (junto com o hodômetro)
-let PEND_LOG=[], PEND_FOGOS=new Set(), PEND_CAV=null, SALVAR_MOV_CAV=null;
+let PEND_LOG=[], PEND_FOGOS=new Set(), PEND_CAV=null;
 
 function nav(v,p={}){
   // Se tem movimentação pendente de salvar, avisa antes de sair do veículo em edição
@@ -1224,6 +1229,7 @@ function dropZone(zone,cav,carr){
   if(!mDrag) return;
   const {fogo,from}=mDrag;
   if(zone==='sucata'){
+    // Sucatear sempre pede o motivo na hora (mas só entra na fila — não salva ainda)
     abrirMotivoSucata(fogo, from, cav);
     return;
   }
@@ -1238,6 +1244,19 @@ function dropZone(zone,cav,carr){
   renderMain();
 }
 
+// ── Salvar Movimentações em lote (pede o KM do hodômetro UMA vez só, no final) ──
+// Valida o campo de hodômetro na hora, mostrando ✓ verde ou ✗ vermelho (igual ao Gestran)
+function validarHodoInline(cav, hodoAtual){
+  const el=document.getElementById('mapa-hodo-input'); if(!el) return;
+  const check=document.getElementById('mapa-hodo-check'); if(!check) return;
+  const v=parseInt(el.value)||0;
+  if(v<=0){ check.textContent=''; return; }
+  if(v<(hodoAtual||0)){ check.textContent='✗'; check.style.color='var(--red)'; }
+  else { check.textContent='✓'; check.style.color='var(--green)'; }
+}
+
+// Salva direto — sem popup, igual ao Gestran: lê o hodômetro que já está no campo do
+// cabeçalho e grava tudo (hodômetro + qualquer movimentação pendente) num só clique.
 // Estado mínimo que precisa realmente persistir na planilha após uma movimentação.
 function estadoMovPneu(p){
   return {
@@ -1265,23 +1284,11 @@ async function verificarMovimentacoesSalvas(esperados){
     return {ok:divergentes.length===0,divergentes,data};
   }catch(e){ return {ok:false,erro:e.message||'Falha na conferência'}; }
 }
-// ── Salvar Movimentações em lote (pede o KM do hodômetro UMA vez só, no final) ──
-// Valida o campo de hodômetro na hora, mostrando ✓ verde ou ✗ vermelho (igual ao Gestran)
-function validarHodoInline(cav, hodoAtual){
-  const el=document.getElementById('mapa-hodo-input'); if(!el) return;
-  const check=document.getElementById('mapa-hodo-check'); if(!check) return;
-  const v=parseInt(el.value)||0;
-  if(v<=0){ check.textContent=''; return; }
-  if(v<(hodoAtual||0)){ check.textContent='✗'; check.style.color='var(--red)'; }
-  else { check.textContent='✓'; check.style.color='var(--green)'; }
-}
-
-// Salva direto — sem popup, igual ao Gestran: lê o hodômetro que já está no campo do
-// cabeçalho e grava tudo (hodômetro + qualquer movimentação pendente) num só clique.
 async function salvarMovimentacoesDireto(cav){
   const el=document.getElementById('mapa-hodo-input');
   const digitado=el ? parseInt(el.value) : 0;
   const atual=CFG.hodos[cav]||0;
+
   const temPendente = PEND_CAV===cav && PEND_FOGOS.size>0;
   const fogos = temPendente ? [...PEND_FOGOS] : [];
 
@@ -1347,7 +1354,7 @@ async function salvarMovimentacoesDireto(cav){
 
   // Só limpa as pendências DEPOIS da leitura de conferência confirmar todos os pneus.
   if(temPendente) PEND_LOG.forEach(m=>addM(m.fogo,m.tipo,m.cavalo,m.carreta,m.posicao,m.sulco,km));
-  PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_CAV=null;
+  PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_CAV=null; // limpa a fila — senão o botão continua "pendente" mesmo já salvo
 
   // Recarrega da planilha para a tela refletir exatamente o que ficou persistido.
   await load();
@@ -3109,6 +3116,8 @@ Object.entries(SB_MAP).forEach(([id,view])=>{
 // ============================
 //  INIT
 // ============================
+document.getElementById('app-version-login').textContent = 'v'+APP_VERSION;
+document.getElementById('app-version-sidebar').textContent = 'v'+APP_VERSION;
 showApp();
 </script>
 </div><!-- /app-root -->
