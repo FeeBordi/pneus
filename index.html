@@ -623,7 +623,7 @@ async function showApp(){
 // ============================
 // Mude esse número toda vez que publicar uma versão nova — é o que aparece na tela de
 // login e no rodapé do menu, pra dar pra conferir se todo mundo está no mesmo arquivo.
-const APP_VERSION = '2026.09.17.1';
+const APP_VERSION = '2026.09.23.1';
 const API_URL = 'https://script.google.com/macros/s/AKfycbyxNjCT1UmURFcqaEl29rpRBkmrEIdAqh_E5zs-VOYXcpKwAP0BUMspE-I4FkmPduM0/exec';
 let SYNCING = false;
 let PENDING_WRITES = 0; // conta gravações em andamento — o polling espera zerar antes de atualizar a tela
@@ -751,6 +751,8 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function td(){return new Date().toISOString().slice(0,10);}
 function fd(d){if(!d)return'—';const[y,m,dd]=(d||'').split('-');return dd?`${dd}/${m}/${y}`:d;}
 function fkm(n){return Math.round(n||0).toLocaleString('pt-BR')+' km';}
+// Normaliza texto de busca: minúsculo + sem espaços — assim "BPO8543" encontra "BPO 8543"
+function normBusca(s){ return String(s||'').toLowerCase().replace(/\s+/g,''); }
 function fr(n){return 'R$ '+(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function sst(mm){return mm>6?'sg':(mm>=3?'sy':'sr');}
 function stxt(mm){return mm>6?'Bom':(mm>=3?'Atenção':'Crítico');}
@@ -917,8 +919,8 @@ function renderFrota(mc){
 }
 function filtFrota(q){
   const el=document.getElementById('vlist'); if(!el) return;
-  const f=q.toLowerCase().trim();
-  el.innerHTML=PARES_DEFAULT.filter(([c,t])=>!f||c.toLowerCase().includes(f)||t.toLowerCase().includes(f)).map((par,i)=>{
+  const f=normBusca(q);
+  el.innerHTML=PARES_DEFAULT.filter(([c,t])=>!f||normBusca(c).includes(f)||normBusca(t).includes(f)).map((par,i)=>{
     const idx=PARES_DEFAULT.indexOf(par);
     const vp=P.filter(p=>p.cavalo===par[0]||p.carreta===par[1]);
     const nc=vp.filter(p=>p.sulcoMenor<3).length;
@@ -1149,8 +1151,8 @@ function buildSlot(placa,pos,isCarr){
 
 function buildStk(){
   const g=document.getElementById('stk'); if(!g) return;
-  const q=(STK_Q||'').trim().toLowerCase();
-  const list=P.filter(p=>p.status===sTab && (!q||p.fogo.toLowerCase().includes(q))).sort((a,b)=>b.sulcoMenor-a.sulcoMenor);
+  const q=normBusca(STK_Q);
+  const list=P.filter(p=>p.status===sTab && (!q||normBusca(p.fogo).includes(q))).sort((a,b)=>b.sulcoMenor-a.sulcoMenor);
   g.innerHTML=list.map(p=>{
     const sc=sst(p.sulcoMenor);
     return `<div class="st" draggable="true" title="${p.fogo} · ${p.sulcoMenor}mm · ${p.fabricante} ${p.modelo}"
@@ -1492,18 +1494,48 @@ function estoqueAlmoxRows(list){
   return list.length?list.map(p=>`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td><td>${p.fabricante}</td><td>${p.modelo}</td><td style="font-size:11px">${p.vida}</td><td class="r">${sbadge(p.sulcoMenor)}</td><td class="r">${fkm(p.kmTotal||p.kmVida)}</td><td class="r">${fr(p.valorU)}</td><td style="font-size:11px">${p.almoxarifado||'—'}</td></tr>`).join(''):'<tr><td colspan="8"><div class="empty"><div class="eic">📦</div><div class="etxt">Nenhum pneu encontrado</div></div></td></tr>';
 }
 function estoqueReformaRows(list){
-  return list.length?list.map(p=>`<tr onclick="openDet('${p.fogo}')"><td><span class="fg">${p.fogo}</span></td><td>${p.fabricante}</td><td>${p.modelo}</td><td style="font-size:11px">${p.vida}</td><td class="r">${sbadge(p.sulcoMenor)}</td><td class="r">${fkm(p.kmVida)}</td><td class="r">${fr(p.valorU)}</td></tr>`).join(''):'<tr><td colspan="7"><div class="empty"><div class="eic">🔧</div><div class="etxt">Nenhum pneu encontrado</div></div></td></tr>';
+  return list.length?list.map(p=>`<tr>
+    <td onclick="event.stopPropagation()"><input type="checkbox" class="reforma-chk" value="${p.fogo}" onchange="atualizarBtnMoverReforma()"></td>
+    <td onclick="openDet('${p.fogo}')" style="cursor:pointer"><span class="fg">${p.fogo}</span></td>
+    <td onclick="openDet('${p.fogo}')" style="cursor:pointer">${p.fabricante}</td>
+    <td onclick="openDet('${p.fogo}')" style="cursor:pointer">${p.modelo}</td>
+    <td onclick="openDet('${p.fogo}')" style="cursor:pointer;font-size:11px">${p.vida}</td>
+    <td onclick="openDet('${p.fogo}')" style="cursor:pointer" class="r">${sbadge(p.sulcoMenor)}</td>
+    <td onclick="openDet('${p.fogo}')" style="cursor:pointer" class="r">${fkm(p.kmVida)}</td>
+    <td onclick="openDet('${p.fogo}')" style="cursor:pointer" class="r">${fr(p.valorU)}</td>
+    <td onclick="event.stopPropagation()"><button class="btn sm" onclick="moverReformaParaAlmox(['${p.fogo}'])" style="background:var(--blue);color:#fff;font-weight:600;font-size:11px;white-space:nowrap">✓ Voltou → Almox.</button></td>
+  </tr>`).join(''):'<tr><td colspan="9"><div class="empty"><div class="eic">🔧</div><div class="etxt">Nenhum pneu encontrado</div></div></td></tr>';
+}
+function atualizarBtnMoverReforma(){
+  const n=document.querySelectorAll('.reforma-chk:checked').length;
+  const btn=document.getElementById('mover-reforma-lote-btn');
+  if(btn){ btn.style.display = n>0?'inline-flex':'none'; btn.textContent = `✓ Mover ${n} selecionado(s) para Almoxarifado`; }
+}
+async function moverReformaParaAlmox(fogos){
+  const pneus = fogos.map(f=>getPneu(f)).filter(Boolean);
+  if(!pneus.length) return;
+  if(!confirm(pneus.length===1 ? `Confirmar que o pneu ${pneus[0].fogo} voltou da reforma e está disponível no almoxarifado?` : `Confirmar que os ${pneus.length} pneus selecionados voltaram da reforma e estão disponíveis no almoxarifado?`)) return;
+
+  toast('Salvando...', '#38bdf8');
+  for(const p of pneus){
+    p.status='almox';
+    const r = await syncPneu(p);
+    if(!r||!r.ok){ toast('⚠️ Falha ao salvar '+p.fogo+' — pare e confira antes de continuar','#ef4444'); nav('estoque'); return; }
+    addM(p.fogo,'Retorno da Reforma','','','',p.sulcoMenor,0);
+  }
+  toast('✓ '+pneus.length+' pneu(s) movido(s) para Almoxarifado','#22c55e');
+  nav('estoque');
 }
 function filtEstoqueAlmox(q){
   const tb=document.getElementById('estoque-almox-body'); if(!tb) return;
-  const qq=q.toLowerCase();
-  const list=P.filter(p=>p.status==='almox'&&(!qq||p.fogo.toLowerCase().includes(qq)||p.fabricante.toLowerCase().includes(qq)||p.modelo.toLowerCase().includes(qq)));
+  const qq=normBusca(q);
+  const list=P.filter(p=>p.status==='almox'&&(!qq||normBusca(p.fogo).includes(qq)||normBusca(p.fabricante).includes(qq)||normBusca(p.modelo).includes(qq)));
   tb.innerHTML=estoqueAlmoxRows(list);
 }
 function filtEstoqueReforma(q){
   const tb=document.getElementById('estoque-reforma-body'); if(!tb) return;
-  const qq=q.toLowerCase();
-  const list=P.filter(p=>p.status==='reforma'&&(!qq||p.fogo.toLowerCase().includes(qq)||p.fabricante.toLowerCase().includes(qq)||p.modelo.toLowerCase().includes(qq)));
+  const qq=normBusca(q);
+  const list=P.filter(p=>p.status==='reforma'&&(!qq||normBusca(p.fogo).includes(qq)||normBusca(p.fabricante).includes(qq)||normBusca(p.modelo).includes(qq)));
   tb.innerHTML=estoqueReformaRows(list);
 }
 function renderEstoque(mc){
@@ -1530,9 +1562,12 @@ function renderEstoque(mc){
   <div class="card" style="margin-top:14px">
   <div class="ch" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
     <h2>🔧 Reformadora (${ref.length})</h2>
-    <input placeholder="🔍 Buscar fogo / fabricante / modelo..." oninput="filtEstoqueReforma(this.value)" style="width:260px;padding:8px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--txt);font-size:13px">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button id="mover-reforma-lote-btn" onclick="moverReformaParaAlmox([...document.querySelectorAll('.reforma-chk:checked')].map(c=>c.value))" style="display:none;background:var(--green);color:#fff;font-weight:700;padding:8px 14px;border:none;border-radius:8px;cursor:pointer;font-size:13px"></button>
+      <input placeholder="🔍 Buscar fogo / fabricante / modelo..." oninput="filtEstoqueReforma(this.value)" style="width:260px;padding:8px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--txt);font-size:13px">
+    </div>
   </div>
-  <div class="tbl"><table><thead><tr><th>Fogo</th><th>Fabricante</th><th>Modelo</th><th>Vida</th><th class="r">Sulco Entrada</th><th class="r">KM Rodado</th><th class="r">Valor</th></tr></thead>
+  <div class="tbl"><table><thead><tr><th></th><th>Fogo</th><th>Fabricante</th><th>Modelo</th><th>Vida</th><th class="r">Sulco Entrada</th><th class="r">KM Rodado</th><th class="r">Valor</th><th>Chegou da reforma?</th></tr></thead>
   <tbody id="estoque-reforma-body">${estoqueReformaRows(ref)}</tbody>
   </table></div></div>
   </div>`;
@@ -1545,7 +1580,7 @@ function renderList(mc,status,title,sub){
   const list=status==='all'?P:P.filter(p=>p.status===status);
   const invest=list.reduce((s,p)=>s+(p.valorU||0),0);
   mc.innerHTML=`<div class="vh"><div><h1>${title}</h1><div class="sub">${sub} · ${list.length} pneus</div></div>
-  <div style="display:flex;gap:8px"><input style="width:250px" placeholder="🔍 Fogo / fabricante..." oninput="filtList(this.value,'${status}')">
+  <div style="display:flex;gap:8px"><input style="width:250px" placeholder="🔍 Fogo / fabricante / placa..." oninput="filtList(this.value,'${status}')">
   ${(status==='almox'||status==='all')?'<button class="btn primary" onclick="nav(\'cadastro\')" style="background:var(--green);color:#fff;font-weight:700">➕ Novo Pneu</button>':''}</div></div>
   <div class="vb">
   ${list.length?`<div class="kpis"><div class="kpi o"><div class="lbl">Total</div><div class="val">${list.length}</div></div><div class="kpi b"><div class="lbl">Investimento</div><div class="val" style="font-size:18px">${fr(invest)}</div></div></div>`:''}
@@ -1576,7 +1611,8 @@ function renderListRows(list,status){
 }
 function filtList(q,status){
   const lb=document.getElementById('list-body'); if(!lb) return;
-  const list=(status==='all'?P:P.filter(p=>p.status===status)).filter(p=>!q||p.fogo.toLowerCase().includes(q.toLowerCase())||p.fabricante.toLowerCase().includes(q.toLowerCase())||p.modelo.toLowerCase().includes(q.toLowerCase()));
+  const nq=normBusca(q);
+  const list=(status==='all'?P:P.filter(p=>p.status===status)).filter(p=>!nq||normBusca(p.fogo).includes(nq)||normBusca(p.fabricante).includes(nq)||normBusca(p.modelo).includes(nq)||normBusca(p.cavalo).includes(nq)||normBusca(p.carreta).includes(nq));
   lb.innerHTML=renderListRows(list,status);
 }
 
@@ -1643,8 +1679,8 @@ function renderAlocar(mc){
   const nNovas=comVaga.filter(v=>v.tipo==='nova').length;
   const nParcial=comVaga.filter(v=>v.tipo==='parcial').length;
 
-  const aq=(ALOCQ||'').toLowerCase();
-  const soltosF=soltos.filter(p=>!aq||p.fogo.toLowerCase().includes(aq)||(p.fabricante||'').toLowerCase().includes(aq)||(p.modelo||'').toLowerCase().includes(aq));
+  const aq=normBusca(ALOCQ);
+  const soltosF=soltos.filter(p=>!aq||normBusca(p.fogo).includes(aq)||normBusca(p.fabricante).includes(aq)||normBusca(p.modelo).includes(aq));
 
   mc.innerHTML=`
   <div class="vb">
@@ -1779,10 +1815,10 @@ async function confirmarAlocar(){
 
 function renderKmLote(mc){
   const cavalos=Object.keys(CFG.pairs).sort();
-  const q=(KMQ||'').toLowerCase();
+  const q=normBusca(KMQ);
   const list=cavalos.filter(c=>{
     const carr=CFG.pairs[c]||'';
-    return !q || c.toLowerCase().includes(q) || carr.toLowerCase().includes(q);
+    return !q || normBusca(c).includes(q) || normBusca(carr).includes(q);
   });
   const comKm=cavalos.filter(c=>CFG.hodos[c]>0).length;
   mc.innerHTML=`
