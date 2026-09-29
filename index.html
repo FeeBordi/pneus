@@ -623,7 +623,7 @@ async function showApp(){
 // ============================
 // Mude esse número toda vez que publicar uma versão nova — é o que aparece na tela de
 // login e no rodapé do menu, pra dar pra conferir se todo mundo está no mesmo arquivo.
-const APP_VERSION = '2026.09.23.1';
+const APP_VERSION = '2026.09.29.1';
 const API_URL = 'https://script.google.com/macros/s/AKfycbyxNjCT1UmURFcqaEl29rpRBkmrEIdAqh_E5zs-VOYXcpKwAP0BUMspE-I4FkmPduM0/exec';
 let SYNCING = false;
 let PENDING_WRITES = 0; // conta gravações em andamento — o polling espera zerar antes de atualizar a tela
@@ -721,6 +721,17 @@ async function load(){
   });
 
   PARES_DEFAULT = Object.keys(CFG.pairs).map(function(c){ return [c, CFG.pairs[c]]; });
+
+  // Carretas avulsas (sem cavalo mecânico no momento — ex: o cavalo foi vendido e a
+  // carreta ficou no pátio) não têm linha própria em CFG.pairs (que é indexado pelo
+  // cavalo), então nunca apareciam na lista "Frota" pra abrir e mexer nos pneus dela,
+  // mesmo com os pneus ainda presos nela. Aqui detectamos qualquer carreta que tenha
+  // pneu montado nela mas que não está coberta por nenhum par cavalo→carreta, e
+  // criamos uma entrada avulsa (['', carreta]) só pra ela ficar acessível.
+  const carretasComPar = new Set(Object.values(CFG.pairs).filter(Boolean));
+  const carretasAvulsas = new Set();
+  P.forEach(function(p){ if(p.carreta && !carretasComPar.has(p.carreta)) carretasAvulsas.add(p.carreta); });
+  carretasAvulsas.forEach(function(carr){ PARES_DEFAULT.push(['', carr]); });
 }
 
 // Re-sincroniza com o servidor sem perder a tela atual (usado no polling e após erros)
@@ -902,7 +913,7 @@ function renderHome(mc){
     const vp=P.filter(p=>p.cavalo===par[0]||p.carreta===par[1]);
     const vc=vp.filter(p=>p.sulcoMenor<3).length;
     const hodo=CFG.hodos[par[0]]||0;
-    return`<tr onclick="nav('frota-map',{idx:${i}})"><td><span class="plate">${par[0]}</span></td><td><span class="plate">${par[1]}</span></td><td>${vp.length}/19</td><td>${vc>0?`<span class="badge red">${vc}</span>`:'—'}</td><td style="font-family:monospace">${hodo?fkm(hodo):'—'}</td></tr>`;
+    return`<tr onclick="nav('frota-map',{idx:${i}})"><td>${par[0]?`<span class="plate">${par[0]}</span>`:'<span class="badge gray">avulsa</span>'}</td><td><span class="plate">${par[1]}</span></td><td>${vp.length}/19</td><td>${vc>0?`<span class="badge red">${vc}</span>`:'—'}</td><td style="font-family:monospace">${hodo?fkm(hodo):'—'}</td></tr>`;
   }).join('')}
   </tbody></table></div></div>
   </div>`;
@@ -926,15 +937,16 @@ function filtFrota(q){
     const nc=vp.filter(p=>p.sulcoMenor<3).length;
     const na=vp.filter(p=>p.sulcoMenor>=3&&p.sulcoMenor<6).length;
     const hodo=CFG.hodos[par[0]]||0;
+    const avulsa=!par[0];
     return`<div class="vc" onclick="nav('frota-map',{idx:${idx}})">
-      <div class="pls"><span class="plate">${par[0]}</span><span style="color:var(--txt3)">+</span><span class="plate">${par[1]}</span></div>
-      <div class="inf">${vp.length} pneus · ${hodo?fkm(hodo):'sem KM'}</div>
+      <div class="pls">${avulsa?`<span class="plate">${par[1]}</span><span class="badge gray" style="margin-left:6px">Avulsa · sem cavalo</span>`:`<span class="plate">${par[0]}</span><span style="color:var(--txt3)">+</span><span class="plate">${par[1]}</span>`}</div>
+      <div class="inf">${vp.length} pneus${avulsa?'':' · '+(hodo?fkm(hodo):'sem KM')}</div>
       <div class="sr2">
         ${nc>0?`<span class="badge red">${nc} crítico${nc>1?'s':''}</span>`:''}
         ${na>0?`<span class="badge yellow">${na} atenção</span>`:''}
         ${nc===0&&na===0&&vp.length>0?'<span class="badge green">OK</span>':''}
         ${vp.length===0?'<span class="badge gray">Sem pneus</span>':''}
-        <button class="btn sm" onclick="event.stopPropagation();abrirKmDaFrota('${par[0]}',${idx})" style="background:var(--blue);color:#fff;font-weight:600;padding:5px 12px;font-size:12px;border-radius:7px">📏 KM</button>
+        ${avulsa?'':`<button class="btn sm" onclick="event.stopPropagation();abrirKmDaFrota('${par[0]}',${idx})" style="background:var(--blue);color:#fff;font-weight:600;padding:5px 12px;font-size:12px;border-radius:7px">📏 KM</button>`}
       </div>
     </div>`;
   }).join('');
@@ -953,18 +965,19 @@ function renderFrotaMap(mc,idx){
   const na=vp.filter(p=>p.sulcoMenor>=3&&p.sulcoMenor<6).length;
   const cpkMed=vp.filter(p=>cpk(p)>0).reduce((s,p,_,a)=>s+cpk(p)/a.length,0);
   const temPendente = PEND_CAV===cav && PEND_FOGOS.size>0;
+  const avulsa = !cav;
   mc.innerHTML=`<div class="vh" style="flex-wrap:wrap;gap:10px;align-items:flex-end">
     <div><div class="back" onclick="nav('frota')">← Frota</div>
-    <h1><span class="plate">${cav}</span> + <span class="plate">${carr}</span></h1>
-    <div class="sub">Conjunto ${idx+1}/${PARES_DEFAULT.length}${temPendente?` · <span style="color:var(--accent);font-weight:700">${PEND_FOGOS.size} pendente(s)</span>`:''}</div></div>
-    <div style="display:flex;flex-direction:column;gap:3px">
+    <h1>${avulsa?`<span class="plate">${carr}</span> <span class="badge gray" style="font-size:12px;vertical-align:middle">Avulsa · sem cavalo</span>`:`<span class="plate">${cav}</span> + <span class="plate">${carr}</span>`}</h1>
+    <div class="sub">Conjunto ${idx+1}/${PARES_DEFAULT.length}${temPendente?` · <span style="color:var(--accent);font-weight:700">${PEND_FOGOS.size} pendente(s)</span>`:''}${avulsa?' · carreta sem cavalo mecânico no momento — hodômetro não se aplica':''}</div></div>
+    ${avulsa?'':`<div style="display:flex;flex-direction:column;gap:3px">
       <label style="font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em">Hodômetro</label>
       <div style="display:flex;align-items:center;gap:6px">
         <input type="number" id="mapa-hodo-input" value="${hodo||''}" min="0" oninput="validarHodoInline('${cav}',${hodo})"
           style="width:130px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--txt);font-size:14px;font-family:monospace">
         <span id="mapa-hodo-check" style="font-size:16px"></span>
       </div>
-    </div>
+    </div>`}
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn sm" id="mapa-salvar-btn" style="background:var(--green);color:#fff;font-weight:700;${temPendente?'animation:pulseSave 1.6s ease-in-out infinite':''}" onclick="salvarMovimentacoesDireto('${cav}')">💾 Salvar Movimentações${temPendente?' ('+PEND_FOGOS.size+')':''}</button>
       ${temPendente?`<button class="btn sm" onclick="descartarMovimentacoes()">✕ Descartar</button>`:''}
@@ -974,10 +987,10 @@ function renderFrotaMap(mc,idx){
   </div>
   <div class="vb">
   <div class="kpis">
-    <div class="kpi o"><div class="lbl">Montados</div><div class="val">${vp.length}<small>/19</small></div></div>
+    <div class="kpi o"><div class="lbl">Montados</div><div class="val">${vp.length}<small>/${avulsa?POS_CARR.length:19}</small></div></div>
     <div class="kpi r"><div class="lbl">Críticos</div><div class="val">${nc}</div></div>
     <div class="kpi y"><div class="lbl">Atenção</div><div class="val">${na}</div></div>
-    <div class="kpi b"><div class="lbl">Hodômetro</div><div class="val" style="font-size:18px">${hodo?fkm(hodo):'—'}</div></div>
+    <div class="kpi b"><div class="lbl">Hodômetro</div><div class="val" style="font-size:18px">${avulsa?'N/A':(hodo?fkm(hodo):'—')}</div></div>
     <div class="kpi g"><div class="lbl">CPK Médio</div><div class="val" style="font-size:18px">R$ ${cpkMed.toFixed(3)}</div></div>
   </div>
   <div class="g2">
@@ -1057,10 +1070,14 @@ function buildMap(cav,carr){
   w.innerHTML='';
   const stage=document.createElement('div'); stage.className='map-stage';
   const scan=document.createElement('div'); scan.className='hud-scan'; stage.appendChild(scan);
-  stage.appendChild(buildUnit(cav,POS_CAV,false));
-  const conn=document.createElement('div'); conn.className='tconn';
-  conn.innerHTML='<div class="cline"></div><div class="clbl">5ª RODA</div><div class="cline"></div>';
-  stage.appendChild(conn);
+  // Carreta avulsa (sem cavalo) — não existe unidade tratora pra desenhar, então
+  // mostramos só o semi-reboque com suas posições, sem o "5ª roda" de conexão.
+  if(cav){
+    stage.appendChild(buildUnit(cav,POS_CAV,false));
+    const conn=document.createElement('div'); conn.className='tconn';
+    conn.innerHTML='<div class="cline"></div><div class="clbl">5ª RODA</div><div class="cline"></div>';
+    stage.appendChild(conn);
+  }
   stage.appendChild(buildUnit(carr,POS_CARR,true));
   w.appendChild(stage);
 }
