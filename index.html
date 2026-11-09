@@ -42,6 +42,25 @@ button{font-family:inherit;cursor:pointer}
 .kpi .val{font-size:26px;font-weight:700;line-height:1}.kpi .val small{font-size:13px;color:var(--txt2);font-weight:400}
 .kpi .meta{font-size:11px;color:var(--txt2);margin-top:3px}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+/* ── Mapa compacto (cavalo e carreta lado a lado, menor) ── */
+.map-compact{overflow-x:auto}
+.map-compact .map-zoom{zoom:.78}
+.map-compact .map-stage{flex-wrap:nowrap!important;gap:26px!important;padding:22px 18px 18px!important;min-width:max-content}
+@media(max-width:1200px){.map-compact .map-zoom{zoom:.6}}
+@media(max-width:760px){.map-compact .map-zoom{zoom:.46}}
+.map-compact.cb{padding:10px}
+.stk-row{display:grid;grid-template-columns:240px 1fr;gap:12px;padding:10px 14px 2px;align-items:start}
+.stk-row .stk-panel{padding:0;max-height:130px}
+/* Estoque sempre visível embaixo da tela — dá pra arrastar sem precisar rolar */
+.stk-sticky{position:sticky;bottom:0;z-index:8;margin-bottom:0;box-shadow:0 -12px 30px rgba(0,0,0,.55);border-color:var(--line2)}
+.stk-sticky .ch{padding:8px 14px}
+.stk-sticky .dz-row{padding:6px 14px 10px}
+@media(max-width:760px){.stk-row{grid-template-columns:1fr;gap:6px}.stk-row .stk-panel{max-height:84px}}
+/* ── Arrastar com o dedo (tablet/celular) ── */
+.wheel[data-fogo],.st[data-fogo]{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.touch-ghost{position:fixed;z-index:10000;pointer-events:none;width:58px;height:58px;margin:-29px 0 0 -29px;opacity:.92;filter:drop-shadow(0 6px 14px rgba(0,0,0,.6)) drop-shadow(0 0 10px rgba(249,115,22,.7))}
+.touch-ghost .tg-tag{position:absolute;left:50%;bottom:-16px;transform:translateX(-50%);font:700 11px monospace;color:#fff;background:#f97316;padding:1px 6px;border-radius:5px}
+.dragging-src{opacity:.35}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
 @media(max-width:1000px){.g3{grid-template-columns:1fr 1fr}}
 .btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border-radius:8px;border:1px solid var(--line2);background:var(--panel2);color:var(--txt);font-size:13px;font-weight:600;cursor:pointer;transition:.12s}
@@ -264,7 +283,7 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
 .al-item:hover{background:var(--panel2)}.al-item:last-child{border-bottom:none}
 .al-ic{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
 .al-ic.red{background:var(--rbg)}.al-ic.yellow{background:var(--ybg)}.al-ic.blue{background:var(--bbg)}
-.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(12px);z-index:100;background:var(--panel3);border:1px solid var(--line2);border-radius:9px;padding:10px 16px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;transition:.22s;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(12px);z-index:100;background:var(--panel3);border:1px solid var(--line2);border-radius:9px;padding:10px 16px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;transition:.22s;display:flex;align-items:center;gap:7px;white-space:nowrap;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast .tic{width:7px;height:7px;border-radius:50%;background:var(--accent)}
 .empty{padding:40px 20px;text-align:center;color:var(--txt3)}
@@ -638,7 +657,7 @@ async function showApp(){
 // ============================
 // Mude esse número toda vez que publicar uma versão nova — é o que aparece na tela de
 // login e no rodapé do menu, pra dar pra conferir se todo mundo está no mesmo arquivo.
-const APP_VERSION = '2026.11.09.2';
+const APP_VERSION = '2026.11.09.3';
 const API_URL = 'https://script.google.com/macros/s/AKfycbyxNjCT1UmURFcqaEl29rpRBkmrEIdAqh_E5zs-VOYXcpKwAP0BUMspE-I4FkmPduM0/exec';
 let SYNCING = false;
 let PENDING_WRITES = 0; // conta gravações em andamento — o polling espera zerar antes de atualizar a tela
@@ -1067,21 +1086,21 @@ function renderFrotaMap(mc,idx){
     <div class="kpi b"><div class="lbl">Hodômetro</div><div class="val" style="font-size:18px">${avulsa?'N/A':(hodo?fkm(hodo):'—')}</div></div>
     <div class="kpi g"><div class="lbl">CPK Médio</div><div class="val" style="font-size:18px">R$ ${cpkMed.toFixed(3)}</div></div>
   </div>
-  <div class="g2">
-    <div class="card"><div class="ch"><h2>🗺 Mapa do Conjunto</h2><span class="hint">Arraste para mover · Clique = detalhe</span></div>
-    <div class="cb"><div class="map-wrap" id="mwrap"></div>
+  <div>
+    <div class="card"><div class="ch"><h2>🗺 Mapa do Conjunto</h2><span class="hint">Arraste com o mouse ou o dedo · Clique/toque = detalhe</span></div>
+    <div class="cb map-compact"><div class="map-zoom"><div class="map-wrap" id="mwrap"></div></div>
     <div class="map-legend-new"><span><i class="leg-dot g"></i>Bom (&gt; 6mm)</span><span><i class="leg-dot y"></i>Atenção (3–6mm)</span><span><i class="leg-dot r"></i>Crítico (&lt; 3mm)</span></div>
     </div></div>
-    <div class="card"><div class="ch"><h2>📦 Estoque</h2>
+    <div class="card stk-sticky"><div class="ch"><h2>📦 Estoque</h2>
     <div style="display:flex;gap:2px">
       <button class="btn sm ${sTab==='almox'?'primary':''}" onclick="setSTab('almox')">Almox.(${P.filter(p=>p.status==='almox').length})</button>
       <button class="btn sm ${sTab==='reforma'?'primary':''}" onclick="setSTab('reforma')">Reforma(${P.filter(p=>p.status==='reforma').length})</button>
     </div></div>
-    <div style="padding:10px 14px 0">
+    <div class="stk-row">
       <input id="stk-search" placeholder="🔍 Pesquisar por Número de Fogo..." value="${STK_Q||''}" oninput="filtStk(this.value)"
         style="width:100%;padding:8px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--bg2);color:var(--txt);font-size:13px">
+      <div class="stk-panel" id="stk"></div>
     </div>
-    <div class="stk-panel" id="stk"></div>
     <div class="dz-row">
       <div class="dz" id="dz-almox" data-dz="almox">↩ Almox</div>
       <div class="dz dz-r" id="dz-reforma" data-dz="reforma">🔧 Reforma</div>
@@ -1246,7 +1265,7 @@ function buildStk(){
   const list=P.filter(p=>p.status===sTab && (!q||normBusca(p.fogo).includes(q))).sort((a,b)=>b.sulcoMenor-a.sulcoMenor);
   g.innerHTML=list.map(p=>{
     const sc=sst(p.sulcoMenor);
-    return `<div class="st" draggable="true" title="${p.fogo} · ${p.sulcoMenor}mm · ${p.fabricante} ${p.modelo}"
+    return `<div class="st" draggable="true" data-fogo="${p.fogo}" data-from="${sTab}" title="${p.fogo} · ${p.sulcoMenor}mm · ${p.fabricante} ${p.modelo}"
       onclick="openDet('${p.fogo}')"
       ondragstart="mDrag={fogo:'${p.fogo}',from:'${sTab}',pos:null}"
       ondragend="clrOver()">
@@ -1318,6 +1337,93 @@ function dropPos(targetPos,targetPlaca,isCarr){
   marcarPendente(cav, tocados);
   renderMain();
 }
+// ============================
+//  ARRASTAR COM O DEDO (tablet/celular)
+// ============================
+// O arrastar nativo do navegador (draggable) só funciona com mouse. Aqui fazemos o
+// mesmo gesto com o dedo: segura o pneu, arrasta, solta em cima da posição ou da
+// caixa Almox/Reforma/Sucata. Toque rápido sem arrastar continua abrindo o detalhe.
+let TD=null; // estado do arraste por toque
+let TD_SUPRIME_CLIQUE=false;
+function tdFim_(){
+  if(!TD) return;
+  if(TD.ghost) TD.ghost.remove();
+  if(TD.src) TD.src.classList.remove('dragging-src');
+  if(TD.raf) cancelAnimationFrame(TD.raf);
+  document.querySelectorAll('.slot-over').forEach(e=>e.classList.remove('slot-over'));
+  clrOver();
+  TD=null;
+}
+function tdAlvo_(x,y){
+  // elementsFromPoint olha "através" de avisos (toast) que estejam por cima da caixa
+  const pilha=document.elementsFromPoint?document.elementsFromPoint(x,y):[document.elementFromPoint(x,y)];
+  for(const el of pilha){ if(!el||!el.closest) continue; const a=el.closest('.wheel-slot')||el.closest('.dz'); if(a) return a; }
+  return null;
+}
+function tdAutoScroll_(){
+  if(!TD||!TD.ativo) return;
+  const sc=document.getElementById('main');
+  if(sc){
+    const m=70, h=window.innerHeight;
+    if(TD.y<m) sc.scrollTop-=12; else if(TD.y>h-m) sc.scrollTop+=12;
+  }
+  TD.raf=requestAnimationFrame(tdAutoScroll_);
+}
+document.addEventListener('pointerdown',ev=>{
+  try{
+    if(ev.pointerType==='mouse') return; // mouse usa o arrastar nativo
+    if(VIEW!=='frota-map') return;
+    const src=ev.target.closest('.wheel[data-fogo], .st[data-fogo]'); if(!src) return;
+    TD={src, fogo:src.dataset.fogo, from:src.dataset.from||'veiculo', pos:src.dataset.pos||null,
+        x0:ev.clientX, y0:ev.clientY, x:ev.clientX, y:ev.clientY, ativo:false, id:ev.pointerId, ghost:null, alvo:null};
+  }catch(e){ console.error(e); tdFim_(); }
+},{passive:true});
+document.addEventListener('pointermove',ev=>{
+  if(!TD||ev.pointerId!==TD.id) return;
+  try{
+    TD.x=ev.clientX; TD.y=ev.clientY;
+    if(!TD.ativo){
+      if(Math.hypot(TD.x-TD.x0,TD.y-TD.y0)<8) return; // ainda é um toque, não arraste
+      TD.ativo=true;
+      const g=document.createElement('div'); g.className='touch-ghost';
+      const svg=TD.src.querySelector('svg'); g.innerHTML=(svg?svg.outerHTML:'')+'<span class="tg-tag">'+TD.fogo+'</span>';
+      document.body.appendChild(g); TD.ghost=g;
+      TD.src.classList.add('dragging-src');
+      mDrag={fogo:TD.fogo, from:TD.from, pos:TD.pos};
+      tdAutoScroll_();
+    }
+    TD.ghost.style.left=TD.x+'px'; TD.ghost.style.top=TD.y+'px';
+    const alvo=tdAlvo_(TD.x,TD.y);
+    if(alvo!==TD.alvo){
+      document.querySelectorAll('.slot-over').forEach(e=>e.classList.remove('slot-over')); clrOver();
+      if(alvo) alvo.classList.add(alvo.classList.contains('dz')?'over':'slot-over');
+      TD.alvo=alvo;
+    }
+  }catch(e){ console.error(e); mDrag=null; tdFim_(); }
+});
+function tdSoltar_(ev){
+  if(!TD||ev.pointerId!==TD.id) return;
+  const ativo=TD.ativo;
+  const alvo=ativo?tdAlvo_(ev.clientX,ev.clientY):null;
+  tdFim_();
+  if(!ativo) return; // foi só um toque — deixa o clique normal abrir o detalhe
+  TD_SUPRIME_CLIQUE=true; setTimeout(()=>{TD_SUPRIME_CLIQUE=false;},400);
+  try{
+    if(!alvo || ev.type==='pointercancel'){ mDrag=null; return; }
+    if(alvo.classList.contains('wheel-slot')){
+      dropPos(alvo.dataset.pos, alvo.dataset.placa, alvo.dataset.iscarr==='1');
+    } else if(alvo.classList.contains('dz')){
+      const par=PARES_DEFAULT[MAP_IDX]; if(!par){ mDrag=null; return; }
+      const cav=par[0], carr=CFG.pairs[par[0]]||par[1];
+      dropZone(alvo.dataset.dz, cav, carr);
+    } else mDrag=null;
+  }catch(e){ console.error(e); mDrag=null; toast('⚠️ Não foi possível mover o pneu: '+e.message,'#ef4444'); }
+}
+document.addEventListener('pointerup',tdSoltar_);
+document.addEventListener('pointercancel',tdSoltar_);
+// Depois de um arraste por toque, o navegador ainda dispara um "clique" — ignoramos esse
+document.addEventListener('click',ev=>{ if(TD_SUPRIME_CLIQUE){ ev.stopPropagation(); ev.preventDefault(); TD_SUPRIME_CLIQUE=false; } },true);
+
 function dropZone(zone,cav,carr){
   if(!mDrag) return;
   const {fogo,from}=mDrag;
