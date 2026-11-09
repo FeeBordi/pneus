@@ -413,6 +413,7 @@ tbody tr{cursor:pointer;transition:.1s}tbody tr:hover{background:var(--panel2)}
   </div>
   <div class="sb-sec">Operação</div>
   <div class="sb-item" id="sb-home"><span class="ic">🏠</span> Dashboard</div>
+  <div class="sb-item" id="sb-localizar"><span class="ic">🔎</span> Localizar Pneus <span class="sb-cnt" id="cnt-dup" style="display:none">0</span></div>
   <div class="sb-item" id="sb-exec"><span class="ic">📊</span> Relatório Executivo</div>
   <div class="sb-item" id="sb-frota"><span class="ic">🚛</span> Frota <span class="sb-cnt" id="cnt-frota">0</span></div>
   <div class="sb-item" id="sb-almox"><span class="ic">📦</span> Almoxarifado <span class="sb-cnt" id="cnt-almox">0</span></div>
@@ -610,10 +611,24 @@ async function showApp(){
   document.getElementById('sb-user-av').textContent=u.ini;
   document.getElementById('sb-user-nm').textContent=u.nome;
   document.getElementById('app-root').innerHTML_loading = true;
-  toast('Carregando dados da planilha...', '#38bdf8');
-  await load();
-  renderSidebar();
-  nav('home');
+  const cache=lerCache();
+  if(cache){
+    // Abre na hora com a cópia do aparelho e busca a planilha atualizada por trás.
+    // Enquanto não chega, as telas de alteração ficam bloqueadas (ver nav()).
+    DADOS_FRESCOS=false;
+    try{ applyData(cache.data); }catch(e){ console.error(e); }
+    renderSidebar(); nav('home');
+    mostrarAvisoAtualizando(true);
+    const ok=await load();
+    mostrarAvisoAtualizando(false);
+    if(ok){ renderSidebar(); if(PEND_FOGOS.size===0) renderMain(); }
+    else toast('⚠️ Mostrando a última cópia salva no aparelho — não foi possível atualizar','#eab308');
+  } else {
+    toast('Carregando dados da planilha...', '#38bdf8');
+    await load();
+    renderSidebar();
+    nav('home');
+  }
   startPolling();
 }
 
@@ -623,7 +638,7 @@ async function showApp(){
 // ============================
 // Mude esse número toda vez que publicar uma versão nova — é o que aparece na tela de
 // login e no rodapé do menu, pra dar pra conferir se todo mundo está no mesmo arquivo.
-const APP_VERSION = '2026.09.29.1';
+const APP_VERSION = '2026.11.09.1';
 const API_URL = 'https://script.google.com/macros/s/AKfycbyxNjCT1UmURFcqaEl29rpRBkmrEIdAqh_E5zs-VOYXcpKwAP0BUMspE-I4FkmPduM0/exec';
 let SYNCING = false;
 let PENDING_WRITES = 0; // conta gravações em andamento — o polling espera zerar antes de atualizar a tela
@@ -672,7 +687,7 @@ async function syncPneu(p, tipoLabel){
 async function syncHodometro(cavalo, km){
   PENDING_WRITES++;
   try{
-    const r = await apiPost('updateHodometro', { cavalo: cavalo, km: km, usuario: currentUserName() });
+    const r = await apiPost('updateHodometro', { cavalo: placaPlanilha(cavalo), km: km, usuario: currentUserName() });
     if(!r.ok){ toast('⚠️ '+(r.erro||'Falha ao atualizar hodômetro'), '#ef4444'); await refreshFromServer(); }
     return r;
   }catch(e){ toast('⚠️ Sem conexão com o servidor', '#ef4444'); return {ok:false}; }
@@ -691,21 +706,37 @@ async function syncDeletePneu(fogo){
 
 async function syncAddPar(cavalo, carreta){
   PENDING_WRITES++;
-  try{ return await apiPost('addPar', { cavalo: cavalo, carreta: carreta || '' }); }
+  try{ return await apiPost('addPar', { cavalo: placaPlanilha(cavalo), carreta: carreta || '' }); }
   catch(e){ return {ok:false}; }
   finally{ PENDING_WRITES--; }
 }
 
 // Carrega tudo da planilha e popula o estado local (P, CFG, MV)
+const SK_CACHE='pneus_cache_v1';
+let DADOS_FRESCOS=false; // false enquanto a tela está mostrando a cópia guardada no aparelho
 async function load(){
-  const data = await apiGet('data');
-  if(!data.ok){ toast('Erro ao carregar dados: '+(data.erro||''), '#ef4444'); P=[];MV=[];CFG={pairs:{},hodos:{}}; return; }
+  let data;
+  try{ data = await apiGet('data'); }
+  catch(e){ toast('⚠️ Sem conexão com a planilha — tente de novo','#ef4444'); if(!P||!P.length){P=[];MV=[];CFG={pairs:{},hodos:{},rawPlaca:{}};PARES_DEFAULT=[];} return false; }
+  if(!data || !data.ok){ toast('Erro ao carregar dados: '+((data&&data.erro)||''), '#ef4444'); if(!P||!P.length){P=[];MV=[];CFG={pairs:{},hodos:{},rawPlaca:{}};PARES_DEFAULT=[];} return false; }
+  applyData(data);
+  DADOS_FRESCOS=true;
+  // Guarda uma cópia no aparelho só pra próxima abertura aparecer na hora.
+  // A planilha continua sendo a fonte oficial — essa cópia nunca é gravada de volta.
+  try{ localStorage.setItem(SK_CACHE, JSON.stringify({em:Date.now(), data:data})); }catch(e){ try{localStorage.removeItem(SK_CACHE);}catch(_){} }
+  return true;
+}
+function lerCache(){
+  try{ const c=JSON.parse(localStorage.getItem(SK_CACHE)||'null'); return (c&&c.data&&c.data.ok)?c:null; }catch(e){ return null; }
+}
+// Popula P, CFG, MV a partir da resposta da planilha (usado no load e na conferência pós-gravação)
+function applyData(data){
 
   P = (data.pneus||[]).map(function(p){
     return {
       id: p.fogo, fogo: String(p.fogo), fabricante: p.fabricante||'', modelo: p.modelo||'', dot: p.dot||'',
       vida: p.vida||'', valorU: Number(p.valorU)||0, valorTotal: Number(p.valorU)||0,
-      status: p.status||'almox', cavalo: p.cavalo||null, carreta: p.carreta||null, posicao: p.posicao||null,
+      status: p.status||'almox', cavalo: normPlaca(p.cavalo)||null, carreta: normPlaca(p.carreta)||null, posicao: p.posicao?String(p.posicao).trim().toUpperCase():null,
       sulcoMenor: Number(p.sulcoMenor)||0, sulcos:[Number(p.sulcoMenor)||0,Number(p.sulcoMenor)||0,Number(p.sulcoMenor)||0,Number(p.sulcoMenor)||0],
       kmVida: Number(p.kmVida)||0, kmTotal: Number(p.kmVida)||0, kmInst:0,
       almoxarifado:'PNEUS', fornecedor:'', numDoc:'', dataEmissao:'', dimensao:'295/80R22,5', bandaRodagem:'',
@@ -713,11 +744,16 @@ async function load(){
     };
   });
 
-  CFG = { pairs:{}, hodos:{} };
-  (data.frota||[]).forEach(function(f){ CFG.pairs[f.cavalo] = f.carreta || ''; CFG.hodos[f.cavalo] = Number(f.hodometro)||0; });
+  CFG = { pairs:{}, hodos:{}, rawPlaca:{} };
+  (data.frota||[]).forEach(function(f){
+    const cav = normPlaca(f.cavalo); if(!cav) return;
+    CFG.pairs[cav] = normPlaca(f.carreta) || '';
+    CFG.hodos[cav] = Math.max(CFG.hodos[cav]||0, Number(f.hodometro)||0);
+    CFG.rawPlaca[cav] = f.cavalo;
+  });
 
   MV = (data.movimentacoes||[]).map(function(m){
-    return { data: m.data, fogo: m.fogo, tipo: m.tipo, cavalo: m.cavalo, carreta: m.carreta, posicao: m.posicao, sulco: m.sulco, km: m.km, usuario: m.usuario };
+    return { data: m.data, fogo: m.fogo, tipo: m.tipo, cavalo: normPlaca(m.cavalo), carreta: normPlaca(m.carreta), posicao: m.posicao, sulco: m.sulco, km: m.km, usuario: m.usuario };
   });
 
   PARES_DEFAULT = Object.keys(CFG.pairs).map(function(c){ return [c, CFG.pairs[c]]; });
@@ -764,6 +800,20 @@ function fd(d){if(!d)return'—';const[y,m,dd]=(d||'').split('-');return dd?`${d
 function fkm(n){return Math.round(n||0).toLocaleString('pt-BR')+' km';}
 // Normaliza texto de busca: minúsculo + sem espaços — assim "BPO8543" encontra "BPO 8543"
 function normBusca(s){ return String(s||'').toLowerCase().replace(/\s+/g,''); }
+// Padroniza placa no formato "AAA 0A00" — assim "GDH4B32", "gdh-4b32" e "GDH  4B32"
+// viram todos "GDH 4B32". Sem isso, o pneu gravado com a placa escrita de outro jeito
+// "sumia" do mapa do veículo, porque a comparação era letra por letra.
+function normPlaca(s){
+  if(s===null||s===undefined) return s;
+  const bruto=String(s).trim();
+  if(!bruto) return bruto;
+  const t=bruto.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(/^[A-Z]{3}[0-9][0-9A-Z][0-9]{2}$/.test(t)) return t.slice(0,3)+' '+t.slice(3);
+  return bruto.toUpperCase().replace(/\s+/g,' ');
+}
+// Placa como está escrita na aba Frota da planilha (pode estar sem espaço). Usada só
+// pra mandar pro servidor nas gravações de hodômetro/engate, pra ele achar a linha certa.
+function placaPlanilha(cav){ return (CFG && CFG.rawPlaca && CFG.rawPlaca[cav]) || cav; }
 function fr(n){return 'R$ '+(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function sst(mm){return mm>6?'sg':(mm>=3?'sy':'sr');}
 function stxt(mm){return mm>6?'Bom':(mm>=3?'Atenção':'Crítico');}
@@ -811,7 +861,21 @@ let mDrag=null, sTab='almox', MAP_IDX=null, KM_ORIGEM='frota-map', STK_Q='';
 // só vão pro servidor quando ele aperta "Salvar Movimentações" (junto com o hodômetro)
 let PEND_LOG=[], PEND_FOGOS=new Set(), PEND_CAV=null;
 
+const VIEWS_ALTERACAO=['frota-map','cadastro','edit','km-lote','alocar','add-lote','sem-fogo','engate','estoque','backup'];
+function mostrarAvisoAtualizando(on){
+  let el=document.getElementById('aviso-atualizando');
+  if(on){
+    if(!el){ el=document.createElement('div'); el.id='aviso-atualizando';
+      el.style.cssText='position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:9999;background:#0c2d45;color:#7dd3fc;border:1px solid #27457b;padding:8px 16px;border-radius:20px;font-size:12px;font-weight:600;box-shadow:0 6px 20px #0008';
+      document.body.appendChild(el); }
+    el.textContent='⏳ Atualizando com a planilha… (dá pra consultar, alterações liberam em instantes)';
+  } else if(el){ el.remove(); }
+}
 function nav(v,p={}){
+  if(!DADOS_FRESCOS && VIEWS_ALTERACAO.includes(v)){
+    toast('⏳ Aguarde alguns segundos — atualizando com a planilha antes de liberar alterações','#38bdf8');
+    return;
+  }
   // Se tem movimentação pendente de salvar, avisa antes de sair do veículo em edição
   if(PEND_FOGOS.size>0 && PEND_CAV){
     const saindoDoVeiculo = !(v==='frota-map' && p && PARES_DEFAULT[p.idx] && PARES_DEFAULT[p.idx][0]===PEND_CAV);
@@ -841,6 +905,8 @@ function renderSidebar(){
   document.getElementById('cnt-estoque').textContent=almx+ref;
   const acEl=document.getElementById('cnt-alocar'); if(acEl) acEl.textContent=almx;
   const sfEl=document.getElementById('cnt-semfogo'); if(sfEl){ const nsf=P.filter(isSemFogo).length; sfEl.textContent=nsf; sfEl.className='sb-cnt'+(nsf>0?' yellow':''); }
+  const dupEl=document.getElementById('cnt-dup');
+  if(dupEl){ try{ const nd=posicoesDuplicadas().length; dupEl.textContent=nd; dupEl.style.display=nd>0?'':'none'; dupEl.className='sb-cnt yellow'; dupEl.title=nd+' posição(ões) com mais de um pneu'; }catch(e){ dupEl.style.display='none'; } }
   const ac=document.getElementById('cnt-alertas');
   ac.textContent=crit;
   ac.className='sb-cnt'+(crit>0?' red':crit>0?' yellow':'');
@@ -852,6 +918,7 @@ function renderMain(){
   try{
     if(VIEW==='home') renderHome(mc);
     else if(VIEW==='frota') renderFrota(mc);
+    else if(VIEW==='localizar') renderLocalizar(mc);
     else if(VIEW==='frota-map') renderFrotaMap(mc,VP.idx||0);
     else if(VIEW==='almox') renderList(mc,'almox','📦 Almoxarifado','Pneus disponíveis em estoque');
     else if(VIEW==='reforma') renderList(mc,'reforma','🔧 Reformas','Pneus em recapagem');
@@ -1280,8 +1347,8 @@ function validarHodoInline(cav, hodoAtual){
 function estadoMovPneu(p){
   return {
     fogo:String(p.fogo), status:p.status||'almox',
-    cavalo:p.status==='veiculo'?(p.cavalo||''):'',
-    carreta:p.status==='veiculo'?(p.carreta||''):'',
+    cavalo:p.status==='veiculo'?(normPlaca(p.cavalo)||''):'',
+    carreta:p.status==='veiculo'?(normPlaca(p.carreta)||''):'',
     posicao:p.status==='veiculo'?(p.posicao||''):'',
     motivoSucata:p.status==='sucata'?(p.motivoSucata||''):''
   };
@@ -1294,11 +1361,13 @@ function estadoMovIgual(a,b){
     String(a.posicao||'')===String(b.posicao||'') &&
     String(a.motivoSucata||'')===String(b.motivoSucata||'');
 }
+let ULTIMA_CONFERENCIA=null;
 async function verificarMovimentacoesSalvas(esperados){
   try{
     const data=await apiGet('data');
     if(!data||!data.ok) return {ok:false,erro:'Não foi possível conferir a planilha'};
-    const mapa=new Map((data.pneus||[]).map(x=>[String(x.fogo),estadoMovPneu(x)]));
+    ULTIMA_CONFERENCIA=data;
+    const mapa=new Map((data.pneus||[]).map(x=>[String(x.fogo),estadoMovPneu({...x,posicao:x.posicao?String(x.posicao).trim().toUpperCase():x.posicao})]));
     const divergentes=esperados.filter(e=>!estadoMovIgual(mapa.get(String(e.fogo)),e));
     return {ok:divergentes.length===0,divergentes,data};
   }catch(e){ return {ok:false,erro:e.message||'Falha na conferência'}; }
@@ -1320,6 +1389,7 @@ async function salvarMovimentacoesDireto(cav){
   const btn=document.getElementById('mapa-salvar-btn');
   if(btn){ btn.disabled=true; btn.textContent='Salvando e conferindo...'; }
   const idxAtual=MAP_IDX;
+  ULTIMA_CONFERENCIA=null;
 
   // Congela exatamente o estado que o usuário está vendo. Mesmo que a tela seja
   // re-renderizada, cada requisição usará este snapshot e não um objeto mutável.
@@ -1375,8 +1445,11 @@ async function salvarMovimentacoesDireto(cav){
   if(temPendente) PEND_LOG.forEach(m=>addM(m.fogo,m.tipo,m.cavalo,m.carreta,m.posicao,m.sulco,km));
   PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_CAV=null; // limpa a fila — senão o botão continua "pendente" mesmo já salvo
 
-  // Recarrega da planilha para a tela refletir exatamente o que ficou persistido.
-  await load();
+  // A tela passa a refletir exatamente o que ficou na planilha. Se a conferência já
+  // baixou os dados, reaproveita (economiza um download inteiro de ~6s); senão baixa.
+  if(ULTIMA_CONFERENCIA && ULTIMA_CONFERENCIA.ok){ applyData(ULTIMA_CONFERENCIA); DADOS_FRESCOS=true; try{localStorage.setItem(SK_CACHE, JSON.stringify({em:Date.now(), data:ULTIMA_CONFERENCIA}));}catch(e){} }
+  else await load();
+  ULTIMA_CONFERENCIA=null;
   toast('✓ Movimentações salvas e conferidas'+(fogos.length?' — '+fogos.length+' pneu(s)':''),'#22c55e');
   renderSidebar();
   VIEW='frota-map'; VP={idx:idxAtual}; renderMain();
@@ -1633,6 +1706,156 @@ function filtList(q,status){
   lb.innerHTML=renderListRows(list,status);
 }
 
+
+// ============================
+//  LOCALIZAR PNEUS (conferência em lote)
+// ============================
+let LOC_TXT='';
+let LOC_RES=[];
+// Chave da posição física: pneu na carreta é identificado pela carreta; no cavalo, pelo cavalo
+function chavePosicao_(p){
+  if(!p||p.status!=='veiculo'||!p.posicao) return null;
+  const veic=p.carreta||p.cavalo; if(!veic) return null;
+  return veic+'|'+p.posicao;
+}
+// Lista de posições com mais de um pneu registrado: [{veiculo, posicao, fogos:[...]}]
+function posicoesDuplicadas(){
+  const m=new Map();
+  P.forEach(p=>{ const k=chavePosicao_(p); if(!k) return; if(!m.has(k)) m.set(k,[]); m.get(k).push(p.fogo); });
+  const out=[];
+  m.forEach((fogos,k)=>{ if(fogos.length>1){ const [veiculo,posicao]=k.split('|'); out.push({veiculo,posicao,fogos}); } });
+  return out.sort((a,b)=>a.veiculo.localeCompare(b.veiculo)||a.posicao.localeCompare(b.posicao));
+}
+// Quebra o texto em números de fogo (linha, vírgula, ponto e vírgula, tab ou espaço)
+function parseFogosLoc_(txt){
+  return String(txt||'').split(/[\n\r,;\t ]+/).map(x=>x.trim()).filter(Boolean);
+}
+// Acha o pneu aceitando "0824" = "824" e maiúsc/minúsc em códigos PROV-
+function acharPneuLoc_(fogo){
+  const f=String(fogo).trim();
+  let p=getPneu(f); if(p) return p;
+  const fu=f.toUpperCase(); p=P.find(x=>String(x.fogo).toUpperCase()===fu); if(p) return p;
+  if(/^\d+$/.test(f)){ const semZero=String(parseInt(f,10)); p=P.find(x=>/^\d+$/.test(x.fogo)&&String(parseInt(x.fogo,10))===semZero); if(p) return p; }
+  return null;
+}
+function calcularLocalizar_(fogos){
+  const dupMap=new Map(); posicoesDuplicadas().forEach(d=>dupMap.set(d.veiculo+'|'+d.posicao,d.fogos));
+  const vistos=new Map();
+  return fogos.map((fogoDigitado)=>{
+    const p=acharPneuLoc_(fogoDigitado);
+    const alertas=[];
+    const chaveRep=p?p.fogo:String(fogoDigitado).toUpperCase();
+    vistos.set(chaveRep,(vistos.get(chaveRep)||0)+1);
+    if(vistos.get(chaveRep)>1) alertas.push('Repetido na lista');
+    if(!p) return {digitado:fogoDigitado,p:null,grupo:'nao',alertas};
+    const k=chavePosicao_(p);
+    if(k&&dupMap.has(k)){
+      const outros=dupMap.get(k).filter(x=>x!==p.fogo);
+      alertas.push('Mesma posição do fogo '+outros.join(', '));
+    }
+    if(p.status==='veiculo'&&!p.posicao) alertas.push('Em veículo sem posição');
+    if(p.status==='veiculo'&&p.sulcoMenor>0&&p.sulcoMenor<3) alertas.push('Sulco crítico');
+    if(isSemFogo(p)) alertas.push('Sem fogo definitivo');
+    return {digitado:fogoDigitado,p,grupo:p.status,alertas};
+  });
+}
+function descreverOnde_(p){
+  if(!p) return '<span class="badge red">Não encontrado</span>';
+  const mapa={veiculo:'<span class="badge green">Veículo</span>',almox:'<span class="badge blue">Almoxarifado</span>',reforma:'<span class="badge yellow">Reforma</span>',sucata:'<span class="badge red">Sucata</span>'};
+  return mapa[p.status]||('<span class="badge">'+p.status+'</span>');
+}
+function renderLocalizar(mc){
+  const dups=posicoesDuplicadas();
+  mc.innerHTML=`<div class="vh"><div><h1>🔎 Localizar Pneus</h1><div class="sub">Digite, cole ou bipe os números de fogo — um por linha, ou separados por vírgula/espaço</div></div></div>
+  <div class="vb">
+    ${dups.length?`<div class="card" style="border-color:#5a5a00;background:#1a1a00;margin-bottom:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="color:#facc15;font-weight:700">⚠️ ${dups.length} posição(ões) com mais de um pneu registrado</span>
+      <span style="color:var(--txt3);font-size:12px">Ex.: ${dups.slice(0,3).map(d=>d.veiculo+' '+d.posicao+' ('+d.fogos.join(' e ')+')').join(' · ')}${dups.length>3?' …':''}</span>
+      <button class="btn sm" style="margin-left:auto" onclick="locCarregarDuplicados()">Ver todos na lista</button>
+    </div>`:''}
+    <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start">
+      <div style="width:240px;max-width:100%">
+        <textarea id="loc-txt" rows="12" placeholder="1336&#10;6975&#10;824&#10;4590" oninput="locAoDigitar()"
+          style="width:100%;padding:10px;border:1.5px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--txt);font-family:monospace;font-size:14px;resize:vertical">${LOC_TXT.replace(/</g,'&lt;')}</textarea>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn" style="flex:1;background:var(--blue);color:#fff;font-weight:600" onclick="locBuscar()">🔎 Localizar</button>
+          <button class="btn" onclick="locLimpar()">Limpar</button>
+        </div>
+      </div>
+      <div style="flex:1;min-width:300px" id="loc-res"></div>
+    </div>
+  </div>`;
+  locBuscar();
+  setTimeout(()=>{ const t=document.getElementById('loc-txt'); if(t&&!LOC_TXT) t.focus(); },50);
+}
+let LOC_TIMER=null;
+function locAoDigitar(){ clearTimeout(LOC_TIMER); LOC_TIMER=setTimeout(locBuscar,300); }
+function locLimpar(){ LOC_TXT=''; const t=document.getElementById('loc-txt'); if(t){t.value='';t.focus();} locBuscar(); }
+function locCarregarDuplicados(){
+  const fogos=[]; posicoesDuplicadas().forEach(d=>d.fogos.forEach(f=>fogos.push(f)));
+  LOC_TXT=fogos.join('\n'); const t=document.getElementById('loc-txt'); if(t) t.value=LOC_TXT; locBuscar();
+}
+function locBuscar(){
+  const box=document.getElementById('loc-res'); if(!box) return;
+  try{
+    const t=document.getElementById('loc-txt'); LOC_TXT=t?t.value:LOC_TXT;
+    const fogos=parseFogosLoc_(LOC_TXT);
+    if(!fogos.length){ LOC_RES=[]; box.innerHTML='<div class="card"><div class="empty"><div class="eic">🔎</div><div class="etxt">Digite um ou mais números de fogo ao lado</div></div></div>'; return; }
+    if(fogos.length>2000){ box.innerHTML='<div class="card" style="color:#f87171">Lista muito grande ('+fogos.length+'). Cole no máximo 2000 fogos por vez.</div>'; return; }
+    LOC_RES=calcularLocalizar_(fogos);
+    const c={veiculo:0,almox:0,reforma:0,sucata:0,nao:0,alerta:0};
+    LOC_RES.forEach(r=>{ c[r.grupo]=(c[r.grupo]||0)+1; if(r.alertas.length) c.alerta++; });
+    const linhas=LOC_RES.map((r,i)=>{
+      const p=r.p;
+      const veic=p&&p.status==='veiculo'?(p.carreta?`<span class="plate">${p.carreta}</span> <span style="font-size:10px;color:var(--txt3)">carreta${p.cavalo?' · cav. '+p.cavalo:''}</span>`:`<span class="plate">${p.cavalo||'—'}</span>`):'—';
+      const alert=r.alertas.length?`<div style="color:#facc15;font-size:11px;margin-top:2px">⚠️ ${r.alertas.join(' · ')}</div>`:'';
+      const placaMapa=p&&p.status==='veiculo'?(p.cavalo||p.carreta):'';
+      return `<tr ${p?`onclick="openDet('${String(p.fogo).replace(/'/g,"\\'")}')" style="cursor:pointer"`:''}>
+        <td><span class="fg">${p?p.fogo:String(r.digitado).replace(/</g,'&lt;')}</span>${alert}</td>
+        <td>${descreverOnde_(p)}</td>
+        <td>${veic}</td>
+        <td style="font-family:monospace;font-size:12px">${p&&p.status==='veiculo'?(p.posicao||'—'):'—'}</td>
+        <td class="r">${p&&p.sulcoMenor?sbadge(p.sulcoMenor):'—'}</td>
+        <td style="font-size:11px;color:var(--txt2)">${p?(p.fabricante+' '+p.modelo):''}</td>
+        <td>${placaMapa?`<button class="btn sm" onclick="event.stopPropagation();irMapaVeiculo('${placaMapa}')">Ver no mapa</button>`:''}</td>
+      </tr>`;
+    }).join('');
+    box.innerHTML=`<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+        <span class="badge" style="background:var(--bg3);color:var(--txt)">${LOC_RES.length} fogo(s)</span>
+        <span class="badge green">${c.veiculo} em veículo</span>
+        <span class="badge blue">${c.almox} almox.</span>
+        <span class="badge yellow">${c.reforma} reforma</span>
+        <span class="badge red">${c.sucata} sucata</span>
+        ${c.nao?`<span class="badge red">${c.nao} não encontrado(s)</span>`:''}
+        ${c.alerta?`<span class="badge yellow">⚠️ ${c.alerta} com alerta</span>`:''}
+        <button class="btn sm" style="margin-left:auto" onclick="locExportar()">⬇️ Exportar Excel</button>
+      </div>
+      <div class="card" style="padding:0"><div class="tbl"><table>
+        <thead><tr><th>Fogo</th><th>Onde está</th><th>Veículo</th><th>Posição</th><th class="r">Sulco</th><th>Pneu</th><th></th></tr></thead>
+        <tbody>${linhas}</tbody></table></div></div>`;
+  }catch(e){ console.error(e); box.innerHTML='<div class="card" style="color:#f87171">Erro ao localizar: '+e.message+'</div>'; }
+}
+function locExportar(){
+  try{
+    if(!LOC_RES.length){ toast('Nada para exportar','#eab308'); return; }
+    if(typeof XLSX==='undefined'){ toast('⚠️ Biblioteca do Excel não carregou — recarregue a página','#ef4444'); return; }
+    const nomes={veiculo:'Veículo',almox:'Almoxarifado',reforma:'Reforma',sucata:'Sucata'};
+    const rows=LOC_RES.map(r=>{ const p=r.p; return {
+      'Fogo':p?p.fogo:r.digitado,
+      'Onde está':p?(nomes[p.status]||p.status):'Não encontrado',
+      'Cavalo':p&&p.status==='veiculo'?(p.cavalo||''):'',
+      'Carreta':p&&p.status==='veiculo'?(p.carreta||''):'',
+      'Posição':p&&p.status==='veiculo'?(p.posicao||''):'',
+      'Sulco (mm)':p?p.sulcoMenor:'',
+      'Fabricante':p?p.fabricante:'', 'Modelo':p?p.modelo:'', 'Vida':p?p.vida:'',
+      'Alertas':r.alertas.join(' · ')
+    };});
+    const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Localizar');
+    XLSX.writeFile(wb,'localizar_pneus_'+td()+'.xlsx');
+  }catch(e){ console.error(e); toast('⚠️ Erro ao exportar: '+e.message,'#ef4444'); }
+}
+
 // ============================
 //  ENGATE / DESENGATE
 // ============================
@@ -1776,15 +1999,12 @@ function renderAlocar(mc){
 }
 
 function irMapaVeiculo(placa){
-  const allCav=Object.keys(CFG.pairs).sort();
-  let cav=placa;
-  // se for carreta, achar cavalo parceiro
-  if(allCav.indexOf(placa)<0){
-    const par=Object.entries(CFG.pairs).find(([c,t])=>t===placa);
-    if(par) cav=par[0];
-  }
-  const idx=allCav.indexOf(cav);
-  VP={idx:idx>=0?idx:0}; nav('frota-map');
+  // O mapa abre pelo índice em PARES_DEFAULT (mesma ordem da tela Frota)
+  const pl=normPlaca(placa);
+  let idx=PARES_DEFAULT.findIndex(pr=>pr[0]===pl);
+  if(idx<0) idx=PARES_DEFAULT.findIndex(pr=>(CFG.pairs[pr[0]]||pr[1])===pl);
+  if(idx<0){ toast('Veículo '+pl+' não encontrado na frota','#eab308'); return; }
+  nav('frota-map',{idx});
 }
 
 // Modal de alocação rápida
@@ -2004,7 +2224,7 @@ async function editEngate(idx){
   const curr=CFG.pairs[cav]||par[1];
   const nova=prompt(`Trocar carreta de ${cav}:\nAtual: ${curr}\nNova carreta (ou deixe em branco para cancelar):`,'');
   if(!nova||!nova.trim()) return;
-  const novaN=nova.trim().toUpperCase();
+  const novaN=normPlaca(nova);
   // check if nova carreta exists in pairs
   const found=PARES_DEFAULT.some(p=>p[1]===novaN)||novaN;
   CFG.pairs[cav]=novaN;
@@ -2026,8 +2246,8 @@ async function importEngates(){
   txt.split('\n').forEach(line=>{
     const parts=line.trim().split(',');
     if(parts.length===2){
-      const c=parts[0].trim().toUpperCase();
-      const t=parts[1].trim().toUpperCase();
+      const c=normPlaca(parts[0]);
+      const t=normPlaca(parts[1]);
       if(c&&t){CFG.pairs[c]=t;cnt++;toSync.push([c,t]);}
     }
   });
@@ -2442,6 +2662,7 @@ function togVehFlds(v){['fld-cav','fld-carr','fld-pos'].forEach(id=>{const el=do
 async function submitCad(e,fogoEdit){
   e.preventDefault();
   const fd=new FormData(e.target); const d=Object.fromEntries(fd);
+  d.cavalo=normPlaca(d.cavalo||''); d.carreta=normPlaca(d.carreta||''); if(d.posicao) d.posicao=String(d.posicao).trim().toUpperCase();
   // Resolve o motivo do sucateamento (usa o texto livre quando for "Outro")
   if(d.motivoSucata==='Outro') d.motivoSucata=(d.motivoSucataOutro||'').trim()||'Outro (não especificado)';
   // ─── VALIDAÇÕES ───
@@ -3159,7 +3380,7 @@ function toast(msg,color='#f97316'){
 //  SIDEBAR EVENTS
 // ============================
 const SB_MAP={
-  'sb-home':'home','sb-frota':'frota','sb-almox':'almox','sb-reforma':'reforma',
+  'sb-home':'home','sb-localizar':'localizar','sb-frota':'frota','sb-almox':'almox','sb-reforma':'reforma',
   'sb-sucata':'sucata','sb-estoque':'estoque','sb-engate':'engate','sb-km':'km-lote','sb-alocar':'alocar','sb-cadastro':'cadastro','sb-lote':'add-lote','sb-semfogo':'sem-fogo',
   'sb-todos':'todos','sb-rel-mov':'rel-mov','sb-rel-vida':'rel-vida','sb-rel-fab':'rel-fab',
   'sb-rel-cpk':'rel-cpk','sb-rel-almox-rep':'rel-almox-rep','sb-rel-veh':'rel-veh','sb-rel-modelo':'rel-modelo',
