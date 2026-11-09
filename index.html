@@ -638,7 +638,7 @@ async function showApp(){
 // ============================
 // Mude esse número toda vez que publicar uma versão nova — é o que aparece na tela de
 // login e no rodapé do menu, pra dar pra conferir se todo mundo está no mesmo arquivo.
-const APP_VERSION = '2026.11.09.1';
+const APP_VERSION = '2026.11.09.2';
 const API_URL = 'https://script.google.com/macros/s/AKfycbyxNjCT1UmURFcqaEl29rpRBkmrEIdAqh_E5zs-VOYXcpKwAP0BUMspE-I4FkmPduM0/exec';
 let SYNCING = false;
 let PENDING_WRITES = 0; // conta gravações em andamento — o polling espera zerar antes de atualizar a tela
@@ -736,7 +736,7 @@ function applyData(data){
     return {
       id: p.fogo, fogo: String(p.fogo), fabricante: p.fabricante||'', modelo: p.modelo||'', dot: p.dot||'',
       vida: p.vida||'', valorU: Number(p.valorU)||0, valorTotal: Number(p.valorU)||0,
-      status: p.status||'almox', cavalo: normPlaca(p.cavalo)||null, carreta: normPlaca(p.carreta)||null, posicao: p.posicao?String(p.posicao).trim().toUpperCase():null,
+      status: p.status||'almox', cavalo: normPlaca(p.cavalo)||null, carreta: normPlaca(p.carreta)||null, posicao: p.posicao?normPos(p.posicao):null,
       sulcoMenor: Number(p.sulcoMenor)||0, sulcos:[Number(p.sulcoMenor)||0,Number(p.sulcoMenor)||0,Number(p.sulcoMenor)||0,Number(p.sulcoMenor)||0],
       kmVida: Number(p.kmVida)||0, kmTotal: Number(p.kmVida)||0, kmInst:0,
       almoxarifado:'PNEUS', fornecedor:'', numDoc:'', dataEmissao:'', dimensao:'295/80R22,5', bandaRodagem:'',
@@ -813,6 +813,13 @@ function normPlaca(s){
 }
 // Placa como está escrita na aba Frota da planilha (pode estar sem espaço). Usada só
 // pra mandar pro servidor nas gravações de hodômetro/engate, pra ele achar a linha certa.
+// Posição padronizada: códigos em maiúsculo (2tee → 2TEE), mas "Estepe" mantém a grafia usada no mapa
+function normPos(s){
+  if(s===null||s===undefined) return s;
+  const t=String(s).trim(); if(!t) return t;
+  if(/^estepe$/i.test(t)) return 'Estepe';
+  return t.toUpperCase();
+}
 function placaPlanilha(cav){ return (CFG && CFG.rawPlaca && CFG.rawPlaca[cav]) || cav; }
 function fr(n){return 'R$ '+(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function sst(mm){return mm>6?'sg':(mm>=3?'sy':'sr');}
@@ -1367,7 +1374,7 @@ async function verificarMovimentacoesSalvas(esperados){
     const data=await apiGet('data');
     if(!data||!data.ok) return {ok:false,erro:'Não foi possível conferir a planilha'};
     ULTIMA_CONFERENCIA=data;
-    const mapa=new Map((data.pneus||[]).map(x=>[String(x.fogo),estadoMovPneu({...x,posicao:x.posicao?String(x.posicao).trim().toUpperCase():x.posicao})]));
+    const mapa=new Map((data.pneus||[]).map(x=>[String(x.fogo),estadoMovPneu({...x,posicao:x.posicao?normPos(x.posicao):x.posicao})]));
     const divergentes=esperados.filter(e=>!estadoMovIgual(mapa.get(String(e.fogo)),e));
     return {ok:divergentes.length===0,divergentes,data};
   }catch(e){ return {ok:false,erro:e.message||'Falha na conferência'}; }
@@ -2662,7 +2669,7 @@ function togVehFlds(v){['fld-cav','fld-carr','fld-pos'].forEach(id=>{const el=do
 async function submitCad(e,fogoEdit){
   e.preventDefault();
   const fd=new FormData(e.target); const d=Object.fromEntries(fd);
-  d.cavalo=normPlaca(d.cavalo||''); d.carreta=normPlaca(d.carreta||''); if(d.posicao) d.posicao=String(d.posicao).trim().toUpperCase();
+  d.cavalo=normPlaca(d.cavalo||''); d.carreta=normPlaca(d.carreta||''); if(d.posicao) d.posicao=normPos(d.posicao);
   // Resolve o motivo do sucateamento (usa o texto livre quando for "Outro")
   if(d.motivoSucata==='Outro') d.motivoSucata=(d.motivoSucataOutro||'').trim()||'Outro (não especificado)';
   // ─── VALIDAÇÕES ───
