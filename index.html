@@ -686,7 +686,7 @@ async function showApp(){
 // ============================
 // Mude esse número toda vez que publicar uma versão nova — é o que aparece na tela de
 // login e no rodapé do menu, pra dar pra conferir se todo mundo está no mesmo arquivo.
-const APP_VERSION = '2026.11.09.5';
+const APP_VERSION = '2026.11.12.1';
 const API_URL = 'https://script.google.com/macros/s/AKfycbyxNjCT1UmURFcqaEl29rpRBkmrEIdAqh_E5zs-VOYXcpKwAP0BUMspE-I4FkmPduM0/exec';
 let SYNCING = false;
 let PENDING_WRITES = 0; // conta gravações em andamento — o polling espera zerar antes de atualizar a tela
@@ -768,6 +768,7 @@ async function load(){
   catch(e){ toast('⚠️ Sem conexão com a planilha — tente de novo','#ef4444'); if(!P||!P.length){P=[];MV=[];CFG={pairs:{},hodos:{},rawPlaca:{}};PARES_DEFAULT=[];} return false; }
   if(!data || !data.ok){ toast('Erro ao carregar dados: '+((data&&data.erro)||''), '#ef4444'); if(!P||!P.length){P=[];MV=[];CFG={pairs:{},hodos:{},rawPlaca:{}};PARES_DEFAULT=[];} return false; }
   applyData(data);
+  reaplicarPendentes_();
   DADOS_FRESCOS=true;
   // Guarda uma cópia no aparelho só pra próxima abertura aparecer na hora.
   // A planilha continua sendo a fonte oficial — essa cópia nunca é gravada de volta.
@@ -915,6 +916,20 @@ let mDrag=null, sTab='almox', MAP_IDX=null, KM_ORIGEM='frota-map', STK_Q='';
 // Movimentações pendentes — acumuladas localmente enquanto o usuário mexe no veículo,
 // só vão pro servidor quando ele aperta "Salvar Movimentações" (junto com o hodômetro)
 let PEND_LOG=[], PEND_FOGOS=new Set(), PEND_CAV=null;
+// Cópia de cada pneu mexido no mapa e ainda não salvo. Se a tela recarregar da planilha
+// antes do Salvar (erro do servidor, abertura do app etc.), essas cópias são reaplicadas
+// por cima — assim a mudança nunca some da tela nem é gravada com a posição antiga.
+var PEND_SNAP={};
+function reaplicarPendentes_(){
+  try{
+    if(!PEND_FOGOS || PEND_FOGOS.size===0){ PEND_SNAP={}; return; }
+    Object.keys(PEND_SNAP).forEach(function(f){
+      const c=JSON.parse(JSON.stringify(PEND_SNAP[f]));
+      const i=P.findIndex(function(x){ return String(x.fogo)===f; });
+      if(i>=0) P[i]=c; else P.push(c);
+    });
+  }catch(e){ console.error(e); }
+}
 
 const VIEWS_ALTERACAO=['frota-map','cadastro','edit','km-lote','alocar','add-lote','sem-fogo','engate','estoque','backup'];
 function mostrarAvisoAtualizando(on){
@@ -932,12 +947,14 @@ function nav(v,p={}){
     return;
   }
   // Se tem movimentação pendente de salvar, avisa antes de sair do veículo em edição
-  if(PEND_FOGOS.size>0 && PEND_CAV){
+  if(PEND_FOGOS.size>0 && PEND_CAV!==null){
     const saindoDoVeiculo = !(v==='frota-map' && p && PARES_DEFAULT[p.idx] && PARES_DEFAULT[p.idx][0]===PEND_CAV);
     if(saindoDoVeiculo){
-      const sair=confirm('Você tem '+PEND_FOGOS.size+' movimentação(ões) não salva(s) em '+PEND_CAV+'.\n\nSair sem salvar? As mudanças serão descartadas.');
-      if(!sair) return;
-      descartarMovimentacoes(true);
+      const salvar=confirm('Você tem '+PEND_FOGOS.size+' movimentação(ões) NÃO SALVA(S) em '+(PEND_CAV||'carreta avulsa')+'.\n\nOK = SALVAR agora\nCancelar = continuar neste veículo');
+      if(salvar){
+        salvarMovimentacoesDireto(PEND_CAV).then(function(){ if(PEND_FOGOS.size===0) nav(v,p); }).catch(function(e){ console.error(e); });
+      }
+      return;
     }
   }
   VIEW=v;VP=p;renderSidebar();renderMain();
@@ -1340,7 +1357,11 @@ function setSTab(t){sTab=t;STK_Q='';nav('frota-map',{idx:MAP_IDX});}
 // Marca que existe alteração pendente nesse veículo (a tela vai mostrar o botão Salvar)
 function marcarPendente(cav, fogos){
   PEND_CAV = cav;
-  fogos.forEach(f=>PEND_FOGOS.add(f));
+  fogos.forEach(f=>{
+    PEND_FOGOS.add(f);
+    const p=getPneu(f);
+    if(p) PEND_SNAP[String(f)]=JSON.parse(JSON.stringify(p));
+  });
 }
 
 function dropPos(targetPos,targetPlaca,isCarr){
@@ -1609,7 +1630,7 @@ async function salvarMovimentacoesDireto(cav){
 
   // Só limpa as pendências DEPOIS da leitura de conferência confirmar todos os pneus.
   if(temPendente) PEND_LOG.forEach(m=>addM(m.fogo,m.tipo,m.cavalo,m.carreta,m.posicao,m.sulco,km));
-  PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_CAV=null; // limpa a fila — senão o botão continua "pendente" mesmo já salvo
+  PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_SNAP={}; PEND_CAV=null; // limpa a fila — senão o botão continua "pendente" mesmo já salvo
 
   // A tela passa a refletir exatamente o que ficou na planilha. Se a conferência já
   // baixou os dados, reaproveita (economiza um download inteiro de ~6s); senão baixa.
@@ -1631,7 +1652,7 @@ window.addEventListener('beforeunload', function(e){
   if(temGravacaoEmAndamento || temPendenteNaoSalvo){ e.preventDefault(); e.returnValue=''; return ''; }
 });
 function descartarMovimentacoes(silencioso){
-  PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_CAV=null;
+  PEND_LOG=[]; PEND_FOGOS=new Set(); PEND_SNAP={}; PEND_CAV=null;
   if(!silencioso){ toast('Alterações descartadas','#eab308'); }
   load().then(()=>{ renderSidebar(); renderMain(); });
 }
@@ -1671,7 +1692,7 @@ function confirmarMotivoSucata(){
   pneu.status='sucata';
   pneu.motivoSucata=motivo;
   PEND_LOG.push({fogo:pneu.fogo,tipo:'Sucata',cavalo:'',carreta:'',posicao:'',sulco:pneu.sulcoMenor});
-  if(SUCATA_CAV) marcarPendente(SUCATA_CAV, [pneu.fogo]);
+  marcarPendente(SUCATA_CAV||'', [pneu.fogo]);
   toast(pneu.fogo+' → Sucata ('+motivo+') — pendente, clique em Salvar quando terminar','#ef4444');
 
   document.getElementById('sucata-modal').classList.remove('open');
