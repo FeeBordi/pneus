@@ -686,7 +686,7 @@ async function showApp(){
 // ============================
 // Mude esse número toda vez que publicar uma versão nova — é o que aparece na tela de
 // login e no rodapé do menu, pra dar pra conferir se todo mundo está no mesmo arquivo.
-const APP_VERSION = '2026.11.12.1';
+const APP_VERSION = '2026.11.12.2';
 const API_URL = 'https://script.google.com/macros/s/AKfycbyxNjCT1UmURFcqaEl29rpRBkmrEIdAqh_E5zs-VOYXcpKwAP0BUMspE-I4FkmPduM0/exec';
 let SYNCING = false;
 let PENDING_WRITES = 0; // conta gravações em andamento — o polling espera zerar antes de atualizar a tela
@@ -1598,6 +1598,43 @@ async function salvarMovimentacoesDireto(cav){
   }
 
   // Primeira tentativa: grava sequencialmente para não sobrecarregar o Apps Script.
+  // ORDEM DE GRAVAÇÃO (rodízio): a planilha recusa gravar um pneu numa posição que,
+  // lá, ainda está ocupada por outro. Num rodízio os dois trocam de lugar, então
+  // nenhum conseguia gravar. Agora: (1) primeiro os que saem do veículo
+  // (almox/reforma/sucata); (2) depois libera a posição dos pneus do rodízio que
+  // estão ocupando o destino de outro; (3) por último grava os pneus montados.
+  try{
+    const cacheSrv=lerCache();
+    const srvP=(cacheSrv&&cacheSrv.data&&cacheSrv.data.pneus)||[];
+    const ocup={};
+    srvP.forEach(function(x){
+      if(x.status==='veiculo' && x.posicao){
+        const pl=normPlaca(x.cavalo)||normPlaca(x.carreta)||'';
+        ocup[pl+'|'+normPos(x.posicao)]=String(x.fogo);
+      }
+    });
+    const pendSet=new Set(snapshots.map(function(s){ return String(s.fogo); }));
+    const liberar=[];
+    snapshots.forEach(function(s){
+      if(s.status!=='veiculo' || !s.posicao) return;
+      const pl=normPlaca(s.cavalo)||normPlaca(s.carreta)||'';
+      const o=ocup[pl+'|'+s.posicao];
+      if(o && o!==String(s.fogo) && pendSet.has(o) && !liberar.includes(o)) liberar.push(o);
+    });
+    snapshots.sort(function(a,b){ return (a.status==='veiculo'?1:0)-(b.status==='veiculo'?1:0); });
+    for(const f of liberar){
+      const s=snapshots.find(function(x){ return String(x.fogo)===f; });
+      if(!s || s.status!=='veiculo') continue; // quem sai do veículo já libera a posição sozinho
+      const tmp=JSON.parse(JSON.stringify(s)); tmp.posicao='';
+      const rL=await syncPneu(tmp);
+      if(!rL||!rL.ok){
+        if(btn){btn.disabled=false;btn.textContent='💾 Salvar Movimentações ('+fogos.length+')';}
+        toast('⚠️ Não foi possível liberar a posição do pneu '+f+' para o rodízio. As alterações continuam pendentes.', '#ef4444');
+        return;
+      }
+    }
+  }catch(e){ console.error(e); }
+
   for(const snap of snapshots){
     const r=await syncPneu(snap);
     if(!r||!r.ok){
