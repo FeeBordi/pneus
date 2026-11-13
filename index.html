@@ -686,7 +686,7 @@ async function showApp(){
 // ============================
 // Mude esse número toda vez que publicar uma versão nova — é o que aparece na tela de
 // login e no rodapé do menu, pra dar pra conferir se todo mundo está no mesmo arquivo.
-const APP_VERSION = '2026.11.12.2';
+const APP_VERSION = '2026.11.13.1';
 const API_URL = 'https://script.google.com/macros/s/AKfycbyxNjCT1UmURFcqaEl29rpRBkmrEIdAqh_E5zs-VOYXcpKwAP0BUMspE-I4FkmPduM0/exec';
 let SYNCING = false;
 let PENDING_WRITES = 0; // conta gravações em andamento — o polling espera zerar antes de atualizar a tela
@@ -890,13 +890,32 @@ function getHodoCarreta(carreta){
   if(par) return CFG.hodos[par[0]]||0;
   return 0;
 }
+// KM rodado do pneu na vida atual = o que está gravado na planilha (kmVida).
+// Ele cresce SÓ quando o hodômetro do veículo é atualizado: soma-se a diferença
+// (hodômetro novo − hodômetro anterior) aos pneus que estavam montados no conjunto.
+// ANTES: somava o hodômetro inteiro do caminhão (o KM de montagem não era gravado
+// e voltava a 0), o que fazia pneu aparecer com 300–700 mil km e estragava o CPK.
 function getKmPneu(p){
   if(!p) return 0;
-  // Se tem KM real do relatório CPK, usa direto
-  if(p.status!=='veiculo') return p.kmVida||0;
-  const hodo=CFG.hodos[p.cavalo]||getHodoCarreta(p.carreta)||0;
-  const inst=p.kmInst||0;
-  return (p.kmVida||0)+Math.max(0,hodo-inst);
+  return Number(p.kmVida)||0;
+}
+// Soma o KM rodado entre duas leituras de hodômetro nos pneus que estavam no conjunto.
+// Primeira leitura do veículo (anterior = 0) não soma nada: vira só o ponto de partida.
+// Devolve a lista de pneus alterados (para gravar) e a diferença aplicada.
+function aplicarKmRodado(cav, hodoAnterior, hodoNovo, fogosNoConjunto){
+  const ant=Number(hodoAnterior)||0, novo=Number(hodoNovo)||0;
+  if(ant<=0 || novo<=ant) return {delta:0, pneus:[]};
+  const delta=novo-ant;
+  const carr=CFG.pairs[cav]||'';
+  const lista = fogosNoConjunto
+    ? fogosNoConjunto.map(f=>getPneu(f)).filter(Boolean)
+    : P.filter(p=>p.status==='veiculo'&&(p.cavalo===cav||(carr&&p.carreta===carr)));
+  lista.forEach(p=>{ p.kmVida=Math.round(((Number(p.kmVida)||0)+delta)*100)/100; p.kmTotal=p.kmVida; });
+  return {delta, pneus:lista};
+}
+function desfazerKmRodado(res){
+  if(!res||!res.delta) return;
+  res.pneus.forEach(p=>{ p.kmVida=Math.max(0,Math.round(((Number(p.kmVida)||0)-res.delta)*100)/100); p.kmTotal=p.kmVida; });
 }
 function addM(fogo,tipo,cav,carr,pos,sulco,km){MV.push({id:uid(),data:td(),fogo,tipo,cavalo:cav||'',carreta:carr||'',posicao:pos||'',sulco:sulco||0,km:km||0,usuario:currentUserName()});}
 
@@ -1578,6 +1597,24 @@ async function salvarMovimentacoesDireto(cav){
   const idxAtual=MAP_IDX;
   ULTIMA_CONFERENCIA=null;
 
+  // KM rodado desde a última leitura do hodômetro vai para os pneus que estavam
+  // no conjunto ANTES das movimentações desta tela (foram eles que rodaram esse trecho).
+  // A lista "antes" vem da última cópia da planilha; sem ela, usa os pneus montados agora.
+  let resKm={delta:0,pneus:[]};
+  if(km>0 && km!==atual){
+    let antes=null;
+    try{
+      const carrA=CFG.pairs[cav]||'';
+      const c=lerCache();
+      if(c&&c.data&&Array.isArray(c.data.pneus)){
+        antes=c.data.pneus.filter(x=>x.status==='veiculo'&&(normPlaca(x.cavalo)===cav||(carrA&&normPlaca(x.carreta)===carrA))).map(x=>String(x.fogo));
+      }
+    }catch(e){ console.error(e); antes=null; }
+    resKm=aplicarKmRodado(cav, atual, km, antes);
+    // Mantém a cópia das pendências com o KM novo (se precisar tentar de novo, não perde o KM)
+    resKm.pneus.forEach(p=>{ if(PEND_FOGOS.has(String(p.fogo))||PEND_FOGOS.has(p.fogo)) PEND_SNAP[String(p.fogo)]=JSON.parse(JSON.stringify(p)); });
+  }
+
   // Congela exatamente o estado que o usuário está vendo. Mesmo que a tela seja
   // re-renderizada, cada requisição usará este snapshot e não um objeto mutável.
   const snapshots=fogos.map(f=>{
@@ -1590,6 +1627,8 @@ async function salvarMovimentacoesDireto(cav){
   if(km>0 && km!==atual){
     const rHodo=await syncHodometro(cav,km);
     if(!rHodo||!rHodo.ok){
+      desfazerKmRodado(resKm);
+      resKm.pneus.forEach(p=>{ if(PEND_SNAP[String(p.fogo)]) PEND_SNAP[String(p.fogo)]=JSON.parse(JSON.stringify(p)); });
       if(btn){btn.disabled=false;btn.textContent='💾 Salvar Movimentações ('+fogos.length+')';}
       toast('⚠️ Falha ao salvar hodômetro. Os pneus ainda não foram confirmados.', '#ef4444');
       return;
@@ -1641,6 +1680,20 @@ async function salvarMovimentacoesDireto(cav){
       if(btn){btn.disabled=false;btn.textContent='💾 Salvar Movimentações ('+fogos.length+')';}
       toast('⚠️ O servidor não confirmou o pneu '+snap.fogo+'. As alterações continuam pendentes.', '#ef4444');
       return;
+    }
+  }
+
+  // Grava o KM novo dos pneus que rodaram e não tiveram movimentação (os movimentados já foram acima)
+  {
+    const jaGravados=new Set(snapshots.map(x=>String(x.fogo)));
+    for(const p of resKm.pneus){
+      if(jaGravados.has(String(p.fogo))) continue;
+      const rk=await syncPneu(p);
+      if(!rk||!rk.ok){
+        if(btn){btn.disabled=false;btn.textContent='💾 Salvar Movimentações ('+fogos.length+')';}
+        toast('⚠️ Hodômetro salvo, mas o KM do pneu '+p.fogo+' não foi gravado. Confira esse pneu.', '#ef4444');
+        return;
+      }
     }
   }
 
@@ -1784,18 +1837,13 @@ async function saveKm(){
   }
 
   if(v<atual){toast('KM não pode ser menor que o atual!','#ef4444');return;}
-  CFG.hodos[cav]=v;
-  // Atualizar kmVida dos pneus do cavalo e carreta parceira
-  const carr=CFG.pairs[cav];
-  const afetados=[];
-  P.filter(p=>p.status==='veiculo'&&(p.cavalo===cav||(carr&&p.carreta===carr))).forEach(p=>{
-    const kmNovo=Math.max(0,v-(p.kmInst||0));
-    if(kmNovo>p.kmVida){ p.kmVida=kmNovo; afetados.push(p); }
-  });
+  // Soma nos pneus do cavalo e da carreta parceira só o KM rodado desde a última leitura
+  const resKm=aplicarKmRodado(cav, atual, v);
   if(btn){btn.disabled=true;btn.textContent='Salvando...';}
   const rH=await syncHodometro(cav, v);
-  if(!rH||!rH.ok){ if(btn){btn.disabled=false;btn.textContent='Salvar';} return; }
-  for(const p of afetados){ const rp=await syncPneu(p); if(!rp||!rp.ok){ if(btn){btn.disabled=false;btn.textContent='Salvar';} return; } }
+  if(!rH||!rH.ok){ desfazerKmRodado(resKm); if(btn){btn.disabled=false;btn.textContent='Salvar';} return; }
+  CFG.hodos[cav]=v;
+  for(const p of resKm.pneus){ const rp=await syncPneu(p); if(!rp||!rp.ok){ if(btn){btn.disabled=false;btn.textContent='Salvar';} toast('⚠️ Hodômetro salvo, mas o KM do pneu '+p.fogo+' não foi gravado. Confira esse pneu.','#ef4444'); return; } }
   closeKm();toast('Hodômetro atualizado: '+fkm(v),'#22c55e');renderSidebar();navVoltarKm();
 }
 document.getElementById('km-modal').onclick=e=>{if(e.target===document.getElementById('km-modal'))closeKm();};
@@ -2260,11 +2308,9 @@ async function confirmarAlocar(){
   p.posicao=pos;
   const oldStatus=p.status;
   p.status='veiculo';
-  // herda km do hodômetro se não tiver
-  const hodo=CFG.hodos[p.cavalo]||getHodoCarreta(p.carreta)||0;
-  if(hodo>0){ p.kmInst=hodo; }
+  // O pneu entra com o KM que já tinha rodado nesta vida; a partir daqui ele cresce
+  // a cada atualização de hodômetro do conjunto (só a diferença entre as leituras).
   addM(p.fogo,'Montagem ('+(oldStatus==='almox'?'almox':'reforma')+'→veículo)',p.cavalo,p.carreta,pos,p.sulcoMenor,getKmPneu(p));
-  p.kmVida=getKmPneu(p);
   const btnAloc=document.getElementById('aloc-confirm-btn');
   if(btnAloc){btnAloc.disabled=true;btnAloc.textContent='Salvando...';}
   const rAloc=await syncPneu(p);
@@ -2396,26 +2442,34 @@ async function salvarKmLote(){
   digitados.forEach(({cav,v})=>{
     const old=CFG.hodos[cav]||0;
     if(v<old){erros++;return;} // não deixa diminuir — usando o valor JÁ atualizado da planilha
-    CFG.hodos[cav]=v;
-    hodosParaSync.push([cav,v]);
-    const carr=CFG.pairs[cav];
-    P.filter(p=>p.status==='veiculo'&&(p.cavalo===cav||(carr&&p.carreta===carr))).forEach(p=>{
-      const kmNovo=Math.max(0,v-(p.kmInst||0));
-      if(kmNovo>(p.kmVida||0)){ p.kmVida=kmNovo; pneusParaSync.push(p); }
-    });
+    // Soma só o KM rodado desde a última leitura (v − anterior) nos pneus do conjunto
+    const resKm=aplicarKmRodado(cav, old, v);
+    hodosParaSync.push([cav,v,old,resKm]);
     salvos++;
   });
   if(salvos===0){ toast('Nenhum hodômetro salvo — todos já estavam com KM igual ou maior na planilha','#eab308'); return; }
 
   const btnLote=document.getElementById('kmlote-salvar-btn');
   if(btnLote){btnLote.disabled=true;btnLote.textContent='Salvando...';}
-  for(const [cav,v] of hodosParaSync){
+  // Um veículo de cada vez: grava o hodômetro e logo em seguida o KM dos pneus dele.
+  // Se falhar no meio, os veículos seguintes voltam ao KM anterior (nada fica pela metade na tela).
+  for(let i=0;i<hodosParaSync.length;i++){
+    const [cav,v,old,resKm]=hodosParaSync[i];
     const r=await syncHodometro(cav,v);
-    if(!r||!r.ok){ if(btnLote){btnLote.disabled=false;btnLote.textContent='💾 Salvar Tudo';} toast('⚠️ Falha ao salvar '+cav+' — tente de novo','#ef4444'); return; }
-  }
-  for(const p of pneusParaSync){
-    const r=await syncPneu(p);
-    if(!r||!r.ok){ if(btnLote){btnLote.disabled=false;btnLote.textContent='💾 Salvar Tudo';} toast('⚠️ Falha ao salvar pneu '+p.fogo+' — tente de novo','#ef4444'); return; }
+    if(!r||!r.ok){
+      for(let j=i;j<hodosParaSync.length;j++) desfazerKmRodado(hodosParaSync[j][3]);
+      if(btnLote){btnLote.disabled=false;btnLote.textContent='💾 Salvar Tudo';}
+      toast('⚠️ Falha ao salvar '+cav+' — os veículos anteriores já foram salvos; tente de novo a partir deste','#ef4444'); return;
+    }
+    CFG.hodos[cav]=v;
+    for(const p of resKm.pneus){
+      const rp=await syncPneu(p);
+      if(!rp||!rp.ok){
+        for(let j=i+1;j<hodosParaSync.length;j++) desfazerKmRodado(hodosParaSync[j][3]);
+        if(btnLote){btnLote.disabled=false;btnLote.textContent='💾 Salvar Tudo';}
+        toast('⚠️ Hodômetro de '+cav+' salvo, mas o KM do pneu '+p.fogo+' não foi gravado. Confira esse pneu.','#ef4444'); return;
+      }
+    }
   }
   toast(`✓ ${salvos} hodômetros salvos`+(erros?` (${erros} ignorados: KM já era maior na planilha)`:''),'#22c55e');
   renderSidebar(); renderMain();
@@ -3171,9 +3225,28 @@ function renderRel(mc,tipo){
     <td class="r" style="color:${kmR>0?'var(--green)':'var(--red)'}">${kmR>0?fkm(kmR):'TROCAR'}</td>
     <td>${sbadge(p.sulcoMenor)}</td></tr>`;}).join('')}</tbody></table></div>`;
   } else if(tipo==='fab'){
-    const byFab={};P.forEach(p=>{if(!byFab[p.fabricante])byFab[p.fabricante]={qtd:0,invest:0,km:0};byFab[p.fabricante].qtd++;byFab[p.fabricante].invest+=p.valorU||0;byFab[p.fabricante].km+=getKmPneu(p);});
-    content=`<div class="tbl"><table><thead><tr><th>Fabricante</th><th class="r">Pneus</th><th class="r">Investimento</th><th class="r">KM Total</th><th class="r">CPK Médio</th><th class="r">Valor Médio</th></tr></thead><tbody>
-    ${Object.entries(byFab).sort((a,b)=>b[1].invest-a[1].invest).map(([f,d])=>`<tr><td><strong>${f}</strong></td><td class="r">${d.qtd}</td><td class="r">${fr(d.invest)}</td><td class="r">${fkm(d.km)}</td><td class="r">${d.km>0?'R$ '+(d.invest/d.km).toFixed(4):'—'}</td><td class="r">${fr(d.invest/d.qtd)}</td></tr>`).join('')}</tbody></table></div>`;
+    // Marca padronizada ("Goodyear" e "GOODYEAR" contam juntas). O CPK só usa pneus com
+    // KM e valor lançados, e é separado entre pneu novo (1ª vida) e recapado.
+    const byFab={};
+    const novoG=()=>({qtd:0,v:0,km:0});
+    P.forEach(p=>{
+      const f=String(p.fabricante||'SEM FABRICANTE').trim().toUpperCase()||'SEM FABRICANTE';
+      if(!byFab[f])byFab[f]={qtd:0,invest:0,novo:novoG(),recape:novoG(),fim:novoG()};
+      const d=byFab[f]; d.qtd++; d.invest+=p.valorU||0;
+      const km=getKmPneu(p), v=p.valorU||0;
+      if(km>0&&v>0){
+        const g=/novo/i.test(p.vida||'')?d.novo:d.recape;
+        g.qtd++; g.v+=v; g.km+=km;
+        if(p.status==='sucata'&&/novo/i.test(p.vida||'')){ d.fim.qtd++; d.fim.v+=v; d.fim.km+=km; }
+      }
+    });
+    const cpkTxt=g=>g.km>0?'R$ '+(g.v/g.km).toFixed(4):'—';
+    const cpkNum=g=>g.km>0?g.v/g.km:Infinity;
+    content=`<div class="card" style="padding:12px 14px;margin-bottom:12px;font-size:12px;line-height:1.5;color:var(--muted,#94a3b8)">
+      Menor CPK = melhor. A coluna <strong>CPK novo — sucateados</strong> é a comparação mais justa entre marcas, porque só conta pneus que já terminaram a vida.
+      Nas outras colunas entram pneus que ainda estão rodando, então o CPK deles ainda vai cair.</div>
+    <div class="tbl"><table><thead><tr><th>Fabricante</th><th class="r">Pneus</th><th class="r">Investimento</th><th class="r">CPK novo — sucateados</th><th class="r">CPK novo (todos)</th><th class="r">CPK recape</th><th class="r">KM médio pneu novo</th><th class="r">Valor Médio</th></tr></thead><tbody>
+    ${Object.entries(byFab).sort((a,b)=>cpkNum(a[1].fim)-cpkNum(b[1].fim)||cpkNum(a[1].novo)-cpkNum(b[1].novo)).map(([f,d])=>`<tr><td><strong>${f}</strong></td><td class="r">${d.qtd}</td><td class="r">${fr(d.invest)}</td><td class="r"><strong>${cpkTxt(d.fim)}</strong> <span style="font-size:10px;opacity:.6">(${d.fim.qtd})</span></td><td class="r">${cpkTxt(d.novo)} <span style="font-size:10px;opacity:.6">(${d.novo.qtd})</span></td><td class="r">${cpkTxt(d.recape)} <span style="font-size:10px;opacity:.6">(${d.recape.qtd})</span></td><td class="r">${d.novo.qtd?fkm(Math.round(d.novo.km/d.novo.qtd)):'—'}</td><td class="r">${fr(d.invest/d.qtd)}</td></tr>`).join('')}</tbody></table></div>`;
   } else if(tipo==='cpk'){
     const list=P.filter(p=>getKmPneu(p)>0&&p.valorU>0).map(p=>({...p,_km:getKmPneu(p),_cpk:p.valorU/getKmPneu(p)})).sort((a,b)=>b._cpk-a._cpk);
     content=`<div class="tbl"><table><thead><tr><th>Fogo</th><th>Fabricante</th><th>Modelo</th><th>Vida</th><th class="r">Valor</th><th class="r">KM</th><th class="r">CPK</th><th>Status</th></tr></thead><tbody>
